@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "xianyuapis": {
+      "command": "/Users/huan.zhang/.trae/tools/uv/latest/uv",
+      "args": [
+        "--directory",
+        "${workspaceFolder}/.mcp/XianYuApis_MCP",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}
