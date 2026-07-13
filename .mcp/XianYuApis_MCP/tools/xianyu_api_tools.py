@@ -159,6 +159,21 @@ class XianYuApiTools:
             }
         )
 
+    def downshelf_item(self, item_id: str) -> str:
+        normalized_item_id = str(item_id).strip()
+        if not normalized_item_id:
+            raise ValueError("item_id 不能为空。")
+
+        result = self._get_api().downshelf_item(normalized_item_id)
+        return _dump(
+            {
+                "success": bool(result.get("data", {}).get("success")),
+                "item_id": normalized_item_id,
+                "api": result.get("api"),
+                "raw": result,
+            }
+        )
+
     async def list_conversations(
         self,
         max_items: int = 1000,

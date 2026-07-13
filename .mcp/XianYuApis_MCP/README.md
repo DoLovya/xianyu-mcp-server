@@ -8,6 +8,7 @@
 - `refresh_login`：刷新登录态
 - `get_item_detail`：查询商品详情
 - `list_my_items`：读取当前登录账号名下的全部商品列表
+- `downshelf_item`：下架当前登录账号名下的指定商品
 - `list_conversations`：读取当前账号最近会话列表
 - `list_conversation_messages`：读取指定会话历史消息
 - `send_text_message`：主动发送文本消息
@@ -83,4 +84,5 @@ uv run server.py
 
 ## 相关文档
 
-- 商品列表接口记录：[`../../docs/mtop_idle_web_xyh_item_list.md`](../../docs/mtop_idle_web_xyh_item_list.md)
+- 商品列表接口记录：[`../../third_party/XianYuApis/docs/mtop_idle_web_xyh_item_list.md`](../../third_party/XianYuApis/docs/mtop_idle_web_xyh_item_list.md)
+- 商品下架接口记录：[`../../third_party/XianYuApis/docs/mtop_taobao_idle_item_downshelf.md`](../../third_party/XianYuApis/docs/mtop_taobao_idle_item_downshelf.md)

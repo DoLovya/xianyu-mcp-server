@@ -36,7 +36,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 XianYuApis 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、我的商品列表查询、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、我的商品列表查询、商品下架、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
     ),
 )
@@ -82,6 +82,16 @@ def list_my_items(page_size: int = 20) -> str:
         page_size: 单页拉取条数，默认 20，当前会限制在 1 到 50 之间。
     """
     return _get_tools().list_my_items(page_size=page_size)
+
+
+@mcp.tool()
+def downshelf_item(item_id: str) -> str:
+    """下架当前登录账号名下的指定商品。
+
+    Args:
+        item_id: 商品 ID，例如 897705472395。
+    """
+    return _get_tools().downshelf_item(item_id=item_id)
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
