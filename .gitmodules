@@ -1,0 +1,3 @@
+[submodule "third_party/XianYuApis"]
+	path = third_party/XianYuApis
+	url = https://github.com/cv-cat/XianYuApis
