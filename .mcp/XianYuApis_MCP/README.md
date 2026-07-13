@@ -7,6 +7,7 @@
 - `validate_login`：校验 Cookie 是否还能换到 `accessToken`
 - `refresh_login`：刷新登录态
 - `get_item_detail`：查询商品详情
+- `list_conversations`：读取当前账号最近会话列表
 - `list_conversation_messages`：读取指定会话历史消息
 - `send_text_message`：主动发送文本消息
 - `send_image_message`：主动发送图片消息

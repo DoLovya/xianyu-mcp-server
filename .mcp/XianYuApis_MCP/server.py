@@ -29,7 +29,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 XianYuApis 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
     ),
 )
@@ -64,6 +64,20 @@ def get_item_detail(item_id: str) -> str:
         item_id: 商品 ID，例如 1001160709960。
     """
     return _get_tools().get_item_detail(item_id=item_id)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+async def list_conversations(max_items: int = 1000, include_hidden: bool = False) -> str:
+    """读取当前账号最近会话列表。
+
+    Args:
+        max_items: 最多返回多少个会话，默认 1000，当前单次上限 1000。
+        include_hidden: 是否包含已隐藏会话，默认 False。
+    """
+    return await _get_tools().list_conversations(
+        max_items=max_items,
+        include_hidden=include_hidden,
+    )
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))

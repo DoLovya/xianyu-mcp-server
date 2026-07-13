@@ -22,6 +22,7 @@
 - 🔐 `validate_login`：校验当前 Cookie 是否有效
 - 🔄 `refresh_login`：刷新当前登录态
 - 🛍️ `get_item_detail`：获取商品详情
+- 📋 `list_conversations`：读取当前账号最近会话列表
 - 💬 `list_conversation_messages`：读取指定会话历史消息
 - ✉️ `send_text_message`：主动发送文本消息
 - 🖼️ `send_image_message`：主动发送图片消息
@@ -36,6 +37,7 @@
 - `validate_login`：校验当前 Cookie 是否有效
 - `refresh_login`：刷新当前登录态
 - `get_item_detail`：获取商品详情
+- `list_conversations`：读取当前账号最近会话列表
 - `list_conversation_messages`：读取指定会话历史消息
 - `send_text_message`：主动发送文本消息
 - `send_image_message`：主动发送图片消息

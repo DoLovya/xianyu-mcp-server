@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import inspect
 import json
 import os
 import sys
@@ -10,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import requests
+import websockets
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "XianYuApis"
@@ -41,6 +43,7 @@ def _load_xianyu_modules() -> dict[str, Any]:
         "XianyuLive": goofish_live.XianyuLive,
         "make_text": message.make_text,
         "make_image": message.make_image,
+        "generate_mid": goofish_utils.generate_mid,
         "trans_cookies": goofish_utils.trans_cookies,
         "generate_device_id": goofish_utils.generate_device_id,
     }
@@ -49,6 +52,23 @@ def _load_xianyu_modules() -> dict[str, Any]:
 
 def _dump(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def _session_cookies_str(session: requests.Session) -> str:
+    cookies = session.cookies.get_dict()
+    return "; ".join(f"{key}={value}" for key, value in cookies.items())
+
+
+def _ws_connect(url: str, headers: dict[str, str]):
+    kwargs: dict[str, Any] = {}
+    parameters = inspect.signature(websockets.connect).parameters
+    if "additional_headers" in parameters:
+        kwargs["additional_headers"] = headers
+    else:
+        kwargs["extra_headers"] = headers
+    if "proxy" in parameters:
+        kwargs["proxy"] = None
+    return websockets.connect(url, **kwargs)
 
 
 class XianYuApiTools:
@@ -105,6 +125,27 @@ class XianYuApiTools:
     def get_item_detail(self, item_id: str) -> str:
         result = self._get_api().get_item_info(item_id)
         return _dump(result)
+
+    async def list_conversations(
+        self,
+        max_items: int = 1000,
+        include_hidden: bool = False,
+    ) -> str:
+        normalized_max_items = min(max(max_items, 1), 1000)
+        conversations = await self._fetch_conversations(normalized_max_items)
+        summaries = [self._normalize_conversation(conversation) for conversation in conversations]
+        if not include_hidden:
+            summaries = [summary for summary in summaries if summary.get("visible", True)]
+        return _dump(
+            {
+                "success": True,
+                "count": len(summaries),
+                "raw_count": len(conversations),
+                "max_items": normalized_max_items,
+                "include_hidden": include_hidden,
+                "conversations": summaries,
+            }
+        )
 
     async def list_conversation_messages(self, cid: str, max_items: int = 50) -> str:
         messages = await self._get_live().list_all_conversations(cid)
@@ -177,6 +218,179 @@ class XianYuApiTools:
         if not image_path.exists():
             raise FileNotFoundError(f"图片不存在: {image_path}")
         return str(image_path), False
+
+    async def _fetch_conversations(self, max_items: int) -> list[dict[str, Any]]:
+        live = self._get_live()
+        modules = _load_xianyu_modules()
+        headers = {
+            "Cookie": _session_cookies_str(live.xianyu.session),
+            "Host": "wss-goofish.dingtalk.com",
+            "Connection": "Upgrade",
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+            ),
+            "Origin": "https://www.goofish.com",
+            "Accept-Encoding": "gzip, deflate, br, zstd",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+        }
+        async with _ws_connect(live.base_url, headers) as websocket:
+            await live.init(websocket)
+            send_mid = modules["generate_mid"]()
+            request_message = {
+                "lwp": "/r/Conversation/listNewest",
+                "headers": {"mid": send_mid},
+                "body": [0, max_items],
+            }
+            request_sent = False
+            async for raw_message in websocket:
+                message = self._safe_json_load(raw_message)
+                if not isinstance(message, dict):
+                    continue
+                await self._ack_ws_message(websocket, message)
+                if not request_sent and message.get("lwp") == "/s/vulcan":
+                    await websocket.send(json.dumps(request_message))
+                    request_sent = True
+                    continue
+                if message.get("headers", {}).get("mid") == send_mid:
+                    body = message.get("body")
+                    return body if isinstance(body, list) else []
+        return []
+
+    async def _ack_ws_message(self, websocket: Any, message: dict[str, Any]) -> None:
+        headers = message.get("headers", {})
+        if not isinstance(headers, dict) or not headers:
+            return
+        ack_headers = {
+            "mid": headers.get("mid", ""),
+            "sid": headers.get("sid", ""),
+        }
+        for key in ("app-key", "ua", "dt"):
+            if key in headers:
+                ack_headers[key] = headers[key]
+        await websocket.send(json.dumps({"code": 200, "headers": ack_headers}))
+
+    def _normalize_conversation(self, conversation: dict[str, Any]) -> dict[str, Any]:
+        if "singleChatUserConversation" in conversation:
+            return self._normalize_single_conversation(conversation["singleChatUserConversation"])
+        if "groupChatUserConversation" in conversation:
+            return self._normalize_group_conversation(conversation["groupChatUserConversation"])
+        return {
+            "conversation_type": "unknown",
+            "visible": True,
+            "raw_type": conversation.get("type"),
+        }
+
+    def _normalize_single_conversation(self, user_conversation: dict[str, Any]) -> dict[str, Any]:
+        conversation = user_conversation.get("singleChatConversation", {})
+        extension = conversation.get("extension", {})
+        last_message = (user_conversation.get("lastMessage", {}) or {}).get("message", {}) or {}
+        last_extension = last_message.get("extension", {}) or {}
+        peer_user_id = self._resolve_peer_user_id(conversation, extension)
+        last_sender_id = last_extension.get("senderUserId", "")
+        last_sender_name_hint = last_extension.get("reminderTitle", "")
+        peer_user_name_hint = last_sender_name_hint if last_sender_id == peer_user_id else ""
+        return {
+            "conversation_type": "single",
+            "cid": self._strip_goofish_suffix(conversation.get("cid", "")),
+            "visible": user_conversation.get("visible", 1) == 1,
+            "unread_count": user_conversation.get("redPoint", 0),
+            "is_top": bool(user_conversation.get("topRank", 0)),
+            "modify_time": user_conversation.get("modifyTime", 0),
+            "item_id": extension.get("itemId", ""),
+            "item_title": extension.get("itemTitle", ""),
+            "peer_user_id": peer_user_id,
+            "peer_user_type": extension.get("extUserType", ""),
+            "peer_user_name_hint": peer_user_name_hint,
+            "last_message_summary": self._get_message_summary(last_message),
+            "last_sender_user_id": last_sender_id,
+            "last_sender_name_hint": last_sender_name_hint,
+            "biz_type": conversation.get("bizType", ""),
+            "red_reminder": (user_conversation.get("user_extension", {}) or {}).get("redReminder", ""),
+        }
+
+    def _normalize_group_conversation(self, user_conversation: dict[str, Any]) -> dict[str, Any]:
+        conversation = user_conversation.get("groupChatConversation", {})
+        extension = conversation.get("extension", {})
+        last_message = (user_conversation.get("lastMessage", {}) or {}).get("message", {}) or {}
+        last_extension = last_message.get("extension", {}) or {}
+        return {
+            "conversation_type": "group",
+            "cid": self._strip_goofish_suffix(conversation.get("cid", "")),
+            "visible": user_conversation.get("visible", 1) == 1,
+            "unread_count": user_conversation.get("redPoint", 0),
+            "is_top": bool(user_conversation.get("topRank", 0)),
+            "modify_time": user_conversation.get("modifyTime", 0),
+            "title": self._parse_group_title(conversation, extension),
+            "member_count": conversation.get("memberCount", 0),
+            "biz_type": conversation.get("bizType", ""),
+            "last_message_summary": self._get_message_summary(last_message),
+            "last_sender_user_id": last_extension.get("senderUserId", ""),
+            "last_sender_name_hint": last_extension.get("reminderTitle", ""),
+        }
+
+    def _resolve_peer_user_id(
+        self,
+        conversation: dict[str, Any],
+        extension: dict[str, Any],
+    ) -> str:
+        peer_user_id = str(extension.get("extUserId", "")).strip()
+        if peer_user_id:
+            return peer_user_id
+        my_user_id = getattr(self._get_live(), "myid", "")
+        for key in ("pairFirst", "pairSecond"):
+            user_id = self._strip_goofish_suffix(conversation.get(key, ""))
+            if user_id and user_id != my_user_id:
+                return user_id
+        return ""
+
+    @staticmethod
+    def _safe_json_load(raw_message: Any) -> Any:
+        if isinstance(raw_message, (dict, list)):
+            return raw_message
+        try:
+            return json.loads(raw_message)
+        except Exception:
+            return None
+
+    @staticmethod
+    def _strip_goofish_suffix(value: Any) -> str:
+        if not isinstance(value, str):
+            return ""
+        return value.removesuffix("@goofish")
+
+    @staticmethod
+    def _get_message_summary(message: dict[str, Any]) -> str:
+        content = (message.get("content", {}) or {}).get("custom", {}) or {}
+        extension = message.get("extension", {}) or {}
+        return content.get("summary", "") or extension.get("reminderContent", "")
+
+    @staticmethod
+    def _parse_group_title(conversation: dict[str, Any], extension: dict[str, Any]) -> str:
+        for value in (extension.get("title", ""), conversation.get("title", "")):
+            parsed = XianYuApiTools._parse_title_value(value)
+            if parsed:
+                return parsed
+        return ""
+
+    @staticmethod
+    def _parse_title_value(value: Any) -> str:
+        if isinstance(value, dict):
+            return str(value.get("def", "")).strip()
+        if not isinstance(value, str):
+            return ""
+        value = value.strip()
+        if not value:
+            return ""
+        try:
+            parsed = json.loads(value)
+        except Exception:
+            return value
+        if isinstance(parsed, dict):
+            return str(parsed.get("def", "")).strip() or value
+        return value
 
     @staticmethod
     def _parse_pix(pix: str) -> tuple[int, int]:
