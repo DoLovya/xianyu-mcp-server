@@ -14,13 +14,20 @@ load_dotenv(_MCP_ROOT / ".env")
 
 
 def _load_cookie_str() -> str:
+    # Re-read .env on every tool invocation so a long-lived MCP process can
+    # pick up newly updated credentials without requiring a manual restart.
+    load_dotenv(_MCP_ROOT / ".env", override=True)
+
     cookie_str = os.environ.get("XIANYU_COOKIE", "").strip()
     if cookie_str:
         return cookie_str
 
     cookie_file = os.environ.get("XIANYU_COOKIE_FILE", "").strip()
     if cookie_file:
-        return Path(cookie_file).expanduser().read_text(encoding="utf-8").strip()
+        cookie_path = Path(cookie_file).expanduser()
+        if not cookie_path.is_absolute():
+            cookie_path = (_MCP_ROOT / cookie_path).resolve()
+        return cookie_path.read_text(encoding="utf-8").strip()
 
     return ""
 
@@ -39,8 +46,9 @@ _tools: XianYuApiTools | None = None
 
 def _get_tools() -> XianYuApiTools:
     global _tools
-    if _tools is None:
-        _tools = XianYuApiTools(cookie_str=_load_cookie_str())
+    cookie_str = _load_cookie_str()
+    if _tools is None or _tools.cookie_str != cookie_str:
+        _tools = XianYuApiTools(cookie_str=cookie_str)
     return _tools
 
 
