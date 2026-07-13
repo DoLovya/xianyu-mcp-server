@@ -7,6 +7,7 @@
 - `validate_login`：校验 Cookie 是否还能换到 `accessToken`
 - `refresh_login`：刷新登录态
 - `get_item_detail`：查询商品详情
+- `list_my_items`：读取当前登录账号名下的全部商品列表
 - `list_conversations`：读取当前账号最近会话列表
 - `list_conversation_messages`：读取指定会话历史消息
 - `send_text_message`：主动发送文本消息
@@ -33,7 +34,7 @@ xianyu-mcp-server/
 ## 初始化
 
 ```bash
-cd /Users/huan.zhang/Code/xianyu-mcp-server/.mcp/XianYuApis_MCP
+cd .mcp/XianYuApis_MCP
 cp .env.example .env
 ```
 
@@ -46,13 +47,13 @@ XIANYU_COOKIE=你的完整闲鱼 Cookie
 ## 安装依赖
 
 ```bash
-/Users/huan.zhang/.trae/tools/uv/latest/uv sync
+uv sync
 ```
 
 ## 本地启动
 
 ```bash
-/Users/huan.zhang/.trae/tools/uv/latest/uv run server.py
+uv run server.py
 ```
 
 ## Trae 项目级接入
@@ -63,7 +64,7 @@ XIANYU_COOKIE=你的完整闲鱼 Cookie
 {
   "mcpServers": {
     "XianYuApis": {
-      "command": "/Users/huan.zhang/.trae/tools/uv/latest/uv",
+      "command": "uv",
       "args": [
         "--directory",
         "${workspaceFolder}/.mcp/XianYuApis_MCP",
@@ -79,3 +80,7 @@ XIANYU_COOKIE=你的完整闲鱼 Cookie
 
 首版优先做短调用工具，不包含常驻监听和自动回复主循环。
 如果下一步要接 AI 自动客服，建议单独补一个“消息监听 Worker”，不要直接塞进 MCP 主进程。
+
+## 相关文档
+
+- 商品列表接口记录：[`../../docs/mtop_idle_web_xyh_item_list.md`](../../docs/mtop_idle_web_xyh_item_list.md)

@@ -29,6 +29,7 @@
 - 🔐 `validate_login`：校验当前 Cookie 是否有效
 - 🔄 `refresh_login`：刷新当前登录态
 - 🛍️ `get_item_detail`：获取商品详情
+- 🧾 `list_my_items`：读取当前登录账号名下的全部商品列表
 - 📋 `list_conversations`：读取当前账号最近会话列表
 - 💬 `list_conversation_messages`：读取指定会话历史消息
 - ✉️ `send_text_message`：主动发送文本消息
@@ -44,6 +45,7 @@
 - `validate_login`：校验当前 Cookie 是否有效
 - `refresh_login`：刷新当前登录态
 - `get_item_detail`：获取商品详情
+- `list_my_items`：读取当前登录账号名下的全部商品列表
 - `list_conversations`：读取当前账号最近会话列表
 - `list_conversation_messages`：读取指定会话历史消息
 - `send_text_message`：主动发送文本消息
@@ -62,7 +64,6 @@
 - 扫码登录
 - 常驻监听消息
 - 自动回复 Worker
-- “我的商品列表”独立 MCP 工具
 - 媒体上传独立 MCP 工具
 
 如果后续要接 AI 自动客服，建议把“消息监听”和“MCP 短调用”拆成两个进程，不要把常驻循环直接塞进 MCP 主进程。
@@ -179,3 +180,4 @@ XIANYU_COOKIE=...
 
 - MCP 封装说明：[`./.mcp/XianYuApis_MCP/README.md`](./.mcp/XianYuApis_MCP/README.md)
 - 底层项目说明：[`./third_party/XianYuApis/README.md`](./third_party/XianYuApis/README.md)
+- 商品列表接口记录：[`./docs/mtop_idle_web_xyh_item_list.md`](./docs/mtop_idle_web_xyh_item_list.md)

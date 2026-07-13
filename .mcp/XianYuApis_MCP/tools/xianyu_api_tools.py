@@ -126,6 +126,39 @@ class XianYuApiTools:
         result = self._get_api().get_item_info(item_id)
         return _dump(result)
 
+    def list_my_items(self, page_size: int = 20) -> str:
+        normalized_page_size = min(max(page_size, 1), 50)
+        user_id = self._get_current_user_id()
+        result = self._get_api().get_all_user_items(
+            user_id=user_id,
+            page_size=normalized_page_size,
+        )
+        groups = [
+            {
+                "group_id": group.get("groupId"),
+                "group_name": group.get("groupName"),
+                "item_number": group.get("itemNumber"),
+                "group_type": group.get("groupType"),
+                "default_group": group.get("defaultGroup"),
+            }
+            for group in (result.get("itemGroupList") or [])
+        ]
+        items = [self._normalize_item_card(card) for card in (result.get("cardList") or [])]
+        return _dump(
+            {
+                "success": True,
+                "api": result.get("api"),
+                "user_id": user_id,
+                "count": len(items),
+                "page_size": normalized_page_size,
+                "page_count": result.get("pageCount", 0),
+                "pages": result.get("pages", []),
+                "groups": groups,
+                "items": items,
+                "raw": result,
+            }
+        )
+
     async def list_conversations(
         self,
         max_items: int = 1000,
@@ -218,6 +251,45 @@ class XianYuApiTools:
         if not image_path.exists():
             raise FileNotFoundError(f"图片不存在: {image_path}")
         return str(image_path), False
+
+    def _get_current_user_id(self) -> str:
+        api = self._get_api()
+        # 先换一次 accessToken，避免直接读 loginuser.get 时命中旧 token 过期。
+        api.get_token()
+        refresh_result = api.refresh_token()
+        user_id = str(refresh_result.get("data", {}).get("userId", "")).strip()
+        if not user_id:
+            raise RuntimeError(f"未从登录态响应中拿到 userId: {_dump(refresh_result)}")
+        return user_id
+
+    def _normalize_item_card(self, card: dict[str, Any]) -> dict[str, Any]:
+        card_data = card.get("cardData", {}) if isinstance(card, dict) else {}
+        detail_params = card_data.get("detailParams", {}) or {}
+        pic_info = card_data.get("picInfo", {}) or {}
+        price_info = card_data.get("priceInfo", {}) or {}
+        item_status = card_data.get("itemStatus")
+        return {
+            "item_id": card_data.get("id") or detail_params.get("itemId"),
+            "title": card_data.get("title") or detail_params.get("title"),
+            "price": price_info.get("price") or detail_params.get("soldPrice"),
+            "price_prefix": price_info.get("preText"),
+            "status": self._item_status_text(item_status),
+            "status_code": item_status,
+            "category_id": detail_params.get("categoryId"),
+            "want_text": detail_params.get("wantText"),
+            "main_pic_url": pic_info.get("picUrl") or detail_params.get("picUrl"),
+            "detail_url": card_data.get("detailUrl"),
+            "raw": card,
+        }
+
+    @staticmethod
+    def _item_status_text(item_status: Any) -> str:
+        mapping = {
+            0: "在线",
+            1: "已售出",
+            -2: "已下架",
+        }
+        return mapping.get(item_status, str(item_status) if item_status is not None else "")
 
     async def _fetch_conversations(self, max_items: int) -> list[dict[str, Any]]:
         live = self._get_live()
