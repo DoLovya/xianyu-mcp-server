@@ -36,7 +36,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 XianYuApis 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、我的商品列表查询、商品下架、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、我的商品列表查询、商品下架、商品重新上架、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
     ),
 )
@@ -75,6 +75,16 @@ def get_item_detail(item_id: str) -> str:
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def get_item_edit_detail(item_id: str) -> str:
+    """获取指定商品在 PC 编辑页的编辑详情数据。
+
+    Args:
+        item_id: 商品 ID，例如 1048303755272。
+    """
+    return _get_tools().get_item_edit_detail(item_id=item_id)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_my_items(page_size: int = 20) -> str:
     """读取当前登录账号名下的全部商品列表，并自动翻页聚合。
 
@@ -92,6 +102,17 @@ def downshelf_item(item_id: str) -> str:
         item_id: 商品 ID，例如 897705472395。
     """
     return _get_tools().downshelf_item(item_id=item_id)
+
+
+@mcp.tool()
+def reshelf_item(item_id: str, source_id: str = "") -> str:
+    """通过 PC 编辑重发布链路重新上架指定商品。
+
+    Args:
+        item_id: 商品 ID，例如 1048303755272。
+        source_id: 可选。转发给 `mtop.idle.pc.idleitem.edit` 的 sourceId，留空时默认回退到 item_id。
+    """
+    return _get_tools().reshelf_item(item_id=item_id, source_id=source_id)
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))

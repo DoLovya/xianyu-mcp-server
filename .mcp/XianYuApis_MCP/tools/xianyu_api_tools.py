@@ -126,6 +126,13 @@ class XianYuApiTools:
         result = self._get_api().get_item_info(item_id)
         return _dump(result)
 
+    def get_item_edit_detail(self, item_id: str) -> str:
+        normalized_item_id = str(item_id).strip()
+        if not normalized_item_id:
+            raise ValueError("item_id 不能为空。")
+        result = self._get_api().get_item_edit_detail(normalized_item_id)
+        return _dump(result)
+
     def list_my_items(self, page_size: int = 20) -> str:
         normalized_page_size = min(max(page_size, 1), 50)
         user_id = self._get_current_user_id()
@@ -170,6 +177,33 @@ class XianYuApiTools:
                 "success": bool(result.get("data", {}).get("success")),
                 "item_id": normalized_item_id,
                 "api": result.get("api"),
+                "raw": result,
+            }
+        )
+
+    def reshelf_item(self, item_id: str, source_id: str = "") -> str:
+        normalized_item_id = str(item_id).strip()
+        if not normalized_item_id:
+            raise ValueError("item_id 不能为空。")
+
+        normalized_source_id = str(source_id).strip()
+        result = self._get_api().reshelf_item(
+            normalized_item_id,
+            source_id=normalized_source_id or None,
+        )
+        edit_result = result.get("editResult", {}) or {}
+        edit_data = edit_result.get("data", {}) or {}
+        edit_payload = result.get("editPayload", {}) or {}
+        ret = edit_result.get("ret") or []
+        success = bool(edit_data.get("success")) or any(
+            isinstance(item, str) and item.startswith("SUCCESS") for item in ret
+        )
+        return _dump(
+            {
+                "success": success,
+                "item_id": normalized_item_id,
+                "source_id": edit_payload.get("sourceId", ""),
+                "api": edit_result.get("api"),
                 "raw": result,
             }
         )
