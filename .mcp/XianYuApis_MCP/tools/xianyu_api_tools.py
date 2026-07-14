@@ -31,7 +31,8 @@ def _load_xianyu_modules() -> dict[str, Any]:
     old_cwd = os.getcwd()
     os.chdir(_XIANYU_APIS_ROOT)
     try:
-        goofish_apis = importlib.import_module("goofish_apis")
+        apis = importlib.import_module("apis")
+        core = importlib.import_module("core")
         goofish_live = importlib.import_module("goofish_live")
         message = importlib.import_module("message")
         goofish_utils = importlib.import_module("utils.goofish_utils")
@@ -39,7 +40,10 @@ def _load_xianyu_modules() -> dict[str, Any]:
         os.chdir(old_cwd)
 
     _IMPORT_CACHE = {
-        "XianyuApis": goofish_apis.XianyuApis,
+        "XianyuClient": core.XianyuClient,
+        "AuthApi": apis.AuthApi,
+        "ItemApi": apis.ItemApi,
+        "MediaApi": apis.MediaApi,
         "XianyuLive": goofish_live.XianyuLive,
         "make_text": message.make_text,
         "make_image": message.make_image,
@@ -74,7 +78,10 @@ def _ws_connect(url: str, headers: dict[str, str]):
 class XianYuApiTools:
     def __init__(self, cookie_str: str):
         self.cookie_str = cookie_str.strip()
-        self._api = None
+        self._client = None
+        self._auth_api = None
+        self._item_api = None
+        self._media_api = None
         self._live = None
 
     def _require_cookie(self) -> None:
@@ -83,16 +90,30 @@ class XianYuApiTools:
                 "未配置闲鱼 Cookie。请在 .env 中填写 XIANYU_COOKIE，或提供 XIANYU_COOKIE_FILE。"
             )
 
-    def _get_api(self):
+    def _ensure_rest_apis(self) -> None:
         self._require_cookie()
-        if self._api is None:
+        if self._client is None:
             modules = _load_xianyu_modules()
             cookies = modules["trans_cookies"](self.cookie_str)
             if "unb" not in cookies:
                 raise ValueError("Cookie 中缺少 unb 字段，无法生成 device_id。")
             device_id = modules["generate_device_id"](cookies["unb"])
-            self._api = modules["XianyuApis"](cookies, device_id)
-        return self._api
+            self._client = modules["XianyuClient"](cookies, device_id)
+            self._auth_api = modules["AuthApi"](self._client)
+            self._item_api = modules["ItemApi"](self._client)
+            self._media_api = modules["MediaApi"](self._client)
+
+    def _get_auth_api(self):
+        self._ensure_rest_apis()
+        return self._auth_api
+
+    def _get_item_api(self):
+        self._ensure_rest_apis()
+        return self._item_api
+
+    def _get_media_api(self):
+        self._ensure_rest_apis()
+        return self._media_api
 
     def _get_live(self):
         self._require_cookie()
@@ -102,7 +123,7 @@ class XianYuApiTools:
         return self._live
 
     def validate_login(self) -> str:
-        result = self._get_api().get_token()
+        result = self._get_auth_api().get_token()
         token = result.get("data", {}).get("accessToken", "")
         return _dump(
             {
@@ -114,7 +135,7 @@ class XianYuApiTools:
         )
 
     def refresh_login(self) -> str:
-        result = self._get_api().refresh_token()
+        result = self._get_auth_api().refresh_token()
         return _dump(
             {
                 "success": "data" in result or "ret" in result,
@@ -123,20 +144,20 @@ class XianYuApiTools:
         )
 
     def get_item_detail(self, item_id: str) -> str:
-        result = self._get_api().get_item_info(item_id)
+        result = self._get_item_api().get_item_info(item_id)
         return _dump(result)
 
     def get_item_edit_detail(self, item_id: str) -> str:
         normalized_item_id = str(item_id).strip()
         if not normalized_item_id:
             raise ValueError("item_id 不能为空。")
-        result = self._get_api().get_item_edit_detail(normalized_item_id)
+        result = self._get_item_api().get_item_edit_detail(normalized_item_id)
         return _dump(result)
 
     def list_my_items(self, page_size: int = 20) -> str:
         normalized_page_size = min(max(page_size, 1), 50)
         user_id = self._get_current_user_id()
-        result = self._get_api().get_all_user_items(
+        result = self._get_item_api().get_all_user_items(
             user_id=user_id,
             page_size=normalized_page_size,
         )
@@ -171,7 +192,7 @@ class XianYuApiTools:
         if not normalized_item_id:
             raise ValueError("item_id 不能为空。")
 
-        result = self._get_api().downshelf_item(normalized_item_id)
+        result = self._get_item_api().downshelf_item(normalized_item_id)
         return _dump(
             {
                 "success": bool(result.get("data", {}).get("success")),
@@ -187,7 +208,7 @@ class XianYuApiTools:
             raise ValueError("item_id 不能为空。")
 
         normalized_source_id = str(source_id).strip()
-        result = self._get_api().reshelf_item(
+        result = self._get_item_api().reshelf_item(
             normalized_item_id,
             source_id=normalized_source_id or None,
         )
@@ -261,7 +282,7 @@ class XianYuApiTools:
         modules = _load_xianyu_modules()
         image_path, should_cleanup = self._prepare_image(image)
         try:
-            upload_result = await asyncio.to_thread(self._get_api().upload_media, image_path)
+            upload_result = await asyncio.to_thread(self._get_media_api().upload_media, image_path)
             image_object = upload_result.get("object", {})
             image_url = image_object.get("url")
             if not image_url:
@@ -302,7 +323,7 @@ class XianYuApiTools:
         return str(image_path), False
 
     def _get_current_user_id(self) -> str:
-        api = self._get_api()
+        api = self._get_auth_api()
         # 先换一次 accessToken，避免直接读 loginuser.get 时命中旧 token 过期。
         api.get_token()
         refresh_result = api.refresh_token()
