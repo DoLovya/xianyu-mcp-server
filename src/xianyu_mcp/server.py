@@ -7,16 +7,16 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from tools.xianyu_api_tools import XianYuApiTools
+from .tools.xianyu_api_tools import XianYuApiTools
 
-_MCP_ROOT = Path(__file__).resolve().parent
-load_dotenv(_MCP_ROOT / ".env")
+_REPO_ROOT = Path(__file__).resolve().parents[2]  # src/xianyu_mcp -> src -> 仓库根
+load_dotenv(_REPO_ROOT / ".env")
 
 
 def _load_cookie_str() -> str:
     # Re-read .env on every tool invocation so a long-lived MCP process can
     # pick up newly updated credentials without requiring a manual restart.
-    load_dotenv(_MCP_ROOT / ".env", override=True)
+    load_dotenv(_REPO_ROOT / ".env", override=True)
 
     cookie_str = os.environ.get("XIANYU_COOKIE", "").strip()
     if cookie_str:
@@ -26,7 +26,7 @@ def _load_cookie_str() -> str:
     if cookie_file:
         cookie_path = Path(cookie_file).expanduser()
         if not cookie_path.is_absolute():
-            cookie_path = (_MCP_ROOT / cookie_path).resolve()
+            cookie_path = (_REPO_ROOT / cookie_path).resolve()
         return cookie_path.read_text(encoding="utf-8").strip()
 
     return ""
@@ -172,7 +172,7 @@ async def send_image_message(to_user_id: str, item_id: str, image: str) -> str:
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
     import sys
 
     transport = "stdio"
@@ -183,3 +183,7 @@ if __name__ == "__main__":
         print("按 Ctrl+C 停止服务器\n")
 
     mcp.run(transport=transport)
+
+
+if __name__ == "__main__":
+    main()

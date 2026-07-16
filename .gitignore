@@ -1,0 +1,9 @@
+# Python 编译产物
+*.pyc
+__pycache__/
+
+# 环境变量（含闲鱼 Cookie，请勿提交）
+.env
+
+# 虚拟环境
+.venv

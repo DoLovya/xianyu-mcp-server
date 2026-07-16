@@ -1,5 +1,5 @@
 [project]
-name = "xianyuapis-mcp"
+name = "xianyu-mcp"
 version = "0.1.0"
 description = "基于 XianYuApis 的闲鱼 MCP 服务"
 requires-python = ">=3.11"
@@ -15,8 +15,11 @@ dependencies = [
     "typing-extensions>=4.0.0",
 ]
 
+[project.scripts]
+xianyu-mcp = "xianyu_mcp.server:main"
+
 [tool.hatch.build.targets.wheel]
-include = ["server.py", "tools"]
+packages = ["src/xianyu_mcp"]
 
 [build-system]
 requires = ["hatchling"]

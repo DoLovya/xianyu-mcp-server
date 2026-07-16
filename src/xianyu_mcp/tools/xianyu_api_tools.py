@@ -14,7 +14,7 @@ import requests
 import websockets
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "XianYuApis"
+_XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "XianYuApis"  # src/xianyu_mcp/tools -> src/xianyu_mcp -> src -> 仓库根
 
 _IMPORT_CACHE: dict[str, Any] | None = None
 
