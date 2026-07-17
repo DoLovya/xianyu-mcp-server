@@ -14,7 +14,7 @@ import requests
 import websockets
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "XianYuApis"  # src/xianyu_mcp/tools -> src/xianyu_mcp -> src -> 仓库根
+_XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "pyxianyu"  # src/xianyu_mcp/tools -> src/xianyu_mcp -> src -> 仓库根
 
 _IMPORT_CACHE: dict[str, Any] | None = None
 
@@ -25,7 +25,7 @@ def _load_xianyu_modules() -> dict[str, Any]:
         return _IMPORT_CACHE
 
     if not _XIANYU_APIS_ROOT.exists():
-        raise FileNotFoundError(f"未找到 XianYuApis 子仓库: {_XIANYU_APIS_ROOT}")
+        raise FileNotFoundError(f"未找到 pyxianyu 子仓库: {_XIANYU_APIS_ROOT}")
 
     sys.path.insert(0, str(_XIANYU_APIS_ROOT))
     old_cwd = os.getcwd()
