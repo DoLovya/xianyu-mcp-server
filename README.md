@@ -103,7 +103,6 @@ xianyu-mcp-server/
 ## 🧰 环境要求
 
 - Python 3.11+
-- Node.js 18+（底层 `PyExecJS` 需要一个 JS 运行时来执行闲鱼签名脚本）
 - `uv`
 - 闲鱼登录后的完整 Cookie
 
