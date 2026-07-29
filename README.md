@@ -23,6 +23,7 @@
 - [相关文档](#相关文档)
 - [使用协议](#使用协议)
 - [免责声明](#免责声明)
+- [贡献指南](./CONTRIBUTING.md)
 
 ## 鸣谢
 
@@ -202,7 +203,7 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
 ```json
 {
   "mcpServers": {
-    "xianyuapis": {
+    "xianyu-mcp-server": {
       "command": "uv",
       "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"]
     }
@@ -220,7 +221,7 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
 | VS Code | `.vscode/mcp.json` | 是 | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+ |
 | Cherry Studio | UI 配置，无配置文件 | N/A | 设置 → MCP 服务器 → 添加，类型选 STDIO，参数填 `--directory <绝对路径> run xianyu-mcp` |
 
-- `xianyuapis` 只是 MCP 服务名，可以自定义
+- `xianyu-mcp-server` 只是 MCP 服务名，可以自定义
 - `command` 既可以使用 `uv`（依赖 PATH），也可以使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
 
@@ -302,6 +303,8 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 - 提示：第三方依赖或子模块如有单独协议，以其各自协议为准
 
 详细条款见 [`LICENSE`](./LICENSE)。
+
+欢迎参与贡献，详见 [贡献指南](./CONTRIBUTING.md)。
 
 ## 免责声明
 
