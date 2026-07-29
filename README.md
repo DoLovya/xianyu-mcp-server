@@ -1,18 +1,38 @@
 # xianyu-mcp-server
 
-基于 `third_party/XianYuApis` 封装的闲鱼 MCP 项目，用于把闲鱼商品、会话、消息发送等能力接入支持 MCP 的客户端。
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-GPL%20v3.0-green)](./LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue)](./pyproject.toml)
 
-> [!WARNING]
-> 本项目为开源项目，请在遵守相关法律法规与平台规则的前提下使用。
->
-> 鉴于项目的特殊性，开发团队可能在任何时间停止更新或删除项目。
+基于 `third_party/pyxianyu` 封装的闲鱼 MCP 项目，用于把闲鱼商品、会话、消息发送等能力接入支持 MCP 的客户端。
 
-## ✨ 项目概览
+## 目录
 
-当前仓库分成两层：
+- [鸣谢](#鸣谢)
+- [项目概览](#项目概览)
+- [项目结构](#项目结构)
+- [功能特性](#功能特性)
+- [已知限制](#已知限制)
+- [环境要求](#环境要求)
+- [快速开始](#快速开始)
+- [客户端接入](#客户端接入)
+- [推荐验证流程](#推荐验证流程)
+- [常见问题](#常见问题)
+- [相关文档](#相关文档)
+- [使用协议](#使用协议)
 
-- `third_party/XianYuApis`：闲鱼底层 HTTP / WebSocket 能力
-- `.mcp/XianYuApis_MCP`：面向 MCP 的工具封装
+## 鸣谢
+
+- https://github.com/cv-cat/XianYuApis
+- https://github.com/shaxiu/XianyuAutoAgent
+- https://github.com/zhinianboke/xianyu-auto-reply
+
+## 项目概览
+
+仓库分两层：
+
+- `third_party/pyxianyu`：闲鱼底层 HTTP / WebSocket 能力（git submodule）
+- `src/xianyu_mcp/`：面向 MCP 的工具封装
 
 适合的使用场景：
 
@@ -20,32 +40,44 @@
 - 把闲鱼卖家工作流接入自定义 Agent / 工作流编排系统
 - 作为后续自动客服、消息分发、店铺运维脚本的基础设施
 
-## 🗂️ 项目结构
-
-采用 Python 主流的 src layout，仅展示主要文件。
+## 项目结构
 
 ```text
 xianyu-mcp-server/
 ├── src/
 │   └── xianyu_mcp/
 │       ├── __init__.py
-│       ├── server.py
+│       ├── server.py              # MCP 工具注册与入口
 │       └── tools/
 │           ├── __init__.py
-│           └── xianyu_api_tools.py
+│           └── xianyu_api_tools.py # 底层能力封装
 ├── third_party/
-│   └── XianYuApis/
+│   └── pyxianyu/                  # 闲鱼底层 HTTP/WebSocket 能力（git submodule）
+│       ├── apis/                  # auth_api, item_api, media_api
+│       ├── core/                  # client, exceptions
+│       ├── docs/                  # 接口分析文档
+│       ├── message/               # 消息类型定义
+│       ├── utils/                 # 签名、Cookie 处理
+│       ├── goofish_live.py        # WebSocket 消息收发
+│       └── goofish_apis.py        # HTTP API 封装
+├── openspec/
+│   └── changes/                   # 规范驱动的变更记录
 ├── .trae/
-│   └── mcp.json
+│   ├── commands/                  # OPSX 工作流命令
+│   ├── skills/                    # OpenSpec 技能定义
+│   ├── specs/                     # 规范归档
+│   └── mcp.json                   # Trae MCP 配置
 ├── .env.example
+├── .gitmodules
+├── LICENSE
 ├── pyproject.toml
 ├── uv.lock
 └── README.md
 ```
 
-## 🚀 功能特性
+## 功能特性
 
-当前 MCP 已开放这些工具：
+以下工具均已在实际闲鱼账号上验证可用：
 
 | 工具名 | 说明 |
 | --- | --- |
@@ -56,51 +88,41 @@ xianyu-mcp-server/
 | `list_my_items` | 拉取当前账号名下全部商品列表，并自动翻页聚合 |
 | `downshelf_item` | 下架当前账号名下指定商品 |
 | `reshelf_item` | 通过 PC 编辑重发布链路重新上架指定商品 |
+| `publish_physical_item` | 在闲鱼 PC 端发布全新实体商品，支持自动上传图片 |
 | `list_conversations` | 拉取最近会话列表 |
 | `list_conversation_messages` | 拉取指定会话历史消息 |
 | `send_text_message` | 主动发送文本消息 |
 | `send_image_message` | 主动发送图片消息 |
 
-当前项目已经验证过这些能力：
+## 已知限制
 
-- 能读取当前登录用户 `userId`
-- 能校验并刷新登录态
-- 能拉取当前账号的商品列表
-- 能获取商品详情
-- 能获取商品编辑详情
-- 能执行商品下架
-- 能对支持 PC 编辑的商品执行重新上架
-
-## 🚧 已知限制
-
-当前版本优先支持短调用工具，暂未做这些能力的 MCP 化：
+以下能力尚未做 MCP 化：
 
 - 扫码登录
 - 常驻监听消息
 - 自动回复 Worker
 - 媒体上传独立 MCP 工具
-- 新发商品的完整发布链路
 
-底层 `third_party/XianYuApis` 已补充部分商品发布相关原语接口，例如：
+底层 `third_party/pyxianyu` 的 `ItemApi` 已实现完整的商品发布原语链路：
 
-- `prepublish_check`
-- `preget`
-- `edit_item`
-- `build_reshelf_payload`
+- `prepublish_check`：发布前校验
+- `preget`：获取发布/编辑所需预置参数
+- `edit_item`：PC 编辑接口提交
+- `build_reshelf_payload`：基于编辑详情构造重发布 payload
+- `publish_item`：直接发布全新商品
 
-当前 MCP 层只先暴露了更高频、可直接落地的 `get_item_edit_detail` 和 `reshelf_item`。
+MCP 层已从中封装出 `get_item_edit_detail`、`reshelf_item`、`publish_physical_item` 三个工具。`prepublish_check`、`preget` 等原语仍保留为底层调用能力，未单独暴露。
 
 关于商品上下架，需要额外注意：
 
 - `downshelf_item` 已验证可用于普通商品下架
-- `reshelf_item` 本质上走的是 PC 端“编辑并重发布”链路
-- 虚拟商品目前会受到闲鱼 PC 端发布管控，调用时可能返回 `FAIL_BIZ_PC_NOT_SUPPORT_PUBLISH_OR_EDIT`
-- 因此当前仓库里，“虚拟商品无法通过 MCP / API 在 PC 端重新上架”属于平台限制，不是仓库参数问题
+- `reshelf_item` 本质上走的是 PC 端"编辑并重发布"链路
+- 虚拟商品受闲鱼 PC 端发布管控，无法通过当前 MCP 重新上架（详见常见问题）
 - 其余支持 PC 编辑的实物商品，当前已验证可以下架、也可以重新上架
 
-如果后续要接 AI 自动客服，建议把“消息监听”和“MCP 短调用”拆成两个进程，不要把常驻循环直接塞进 MCP 主进程。
+如果后续要接 AI 自动客服，建议把"消息监听"和"MCP 短调用"拆成两个进程，不要把常驻循环直接塞进 MCP 主进程。
 
-## 🧰 环境要求
+## 环境要求
 
 - Python 3.11+
 - `uv`
@@ -114,7 +136,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 pipx install uv
 ```
 
-## ⚙️ 快速开始
+## 快速开始
 
 ### 1. 拉取子模块
 
@@ -138,7 +160,7 @@ XIANYU_COOKIE=你的完整闲鱼 Cookie
 XIANYU_COOKIE_FILE=./cookie.txt
 ```
 
-优先级说明：
+优先级：
 
 - 配置了 `XIANYU_COOKIE` 时，`XIANYU_COOKIE_FILE` 会被忽略
 - `XIANYU_COOKIE_FILE` 支持相对路径（相对仓库根目录）和绝对路径
@@ -165,145 +187,42 @@ uv run xianyu-mcp --http
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
 
-## 🔌 客户端接入
+## 客户端接入
 
-本项目基于标准 MCP 协议，支持任何兼容 MCP 的客户端。以下给出几个主流客户端的接入示例，除特别说明外均使用 `stdio` 传输模式。
+本项目基于标准 MCP 协议，支持任何兼容 MCP 的客户端。除 Cherry Studio 外均使用 `stdio` 传输模式。
 
 > 前置条件：已完成「快速开始」的 1-4 步，本地能通过 `uv run xianyu-mcp` 启动 MCP 服务。
 
-### Trae
-
-在项目根目录创建或修改 `.trae/mcp.json`：
+通用配置（以 Trae 为例）：
 
 ```json
 {
   "mcpServers": {
     "xianyuapis": {
       "command": "uv",
-      "args": [
-        "--directory",
-        "${workspaceFolder}",
-        "run",
-        "xianyu-mcp"
-      ]
+      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"]
     }
   }
 }
 ```
+
+各客户端差异：
+
+| 客户端 | 配置文件路径 | 支持 `${workspaceFolder}` | 备注 |
+|--------|-------------|--------------------------|------|
+| Trae | `.trae/mcp.json` | 是 | 配置后重载工作区 |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径 | 保存后重启 |
+| Cursor | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局） | 项目级支持 | 全局配置需绝对路径 |
+| VS Code | `.vscode/mcp.json` | 是 | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+ |
+| Cherry Studio | UI 配置，无配置文件 | N/A | 设置 → MCP 服务器 → 添加，类型选 STDIO，参数填 `--directory <绝对路径> run xianyu-mcp` |
 
 - `xianyuapis` 只是 MCP 服务名，可以自定义
 - `command` 既可以使用 `uv`（依赖 PATH），也可以使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
-- 配置完成后，重载 Trae 或重新打开工作区
-
-### Claude Desktop
-
-配置文件路径：
-
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-也可在 Claude Desktop 中通过 `Settings -> Developer -> Edit Config` 打开该文件。
-
-注意：Claude Desktop 不支持 `${workspaceFolder}` 等变量，必须使用仓库的绝对路径。
-
-```json
-{
-  "mcpServers": {
-    "xianyuapis": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/Users/<user>/Code/xianyu-mcp-server",
-        "run",
-        "xianyu-mcp"
-      ]
-    }
-  }
-}
-```
-
-- 把 `/Users/<user>/Code/xianyu-mcp-server` 替换为你的仓库实际绝对路径
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
-- 保存后重启 Claude Desktop
 
-### Cursor
+HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
 
-Cursor 支持项目级和全局两种配置：
-
-- 项目级：在项目根目录创建 `.cursor/mcp.json`
-- 全局：编辑 `~/.cursor/mcp.json`
-
-项目级配置示例：
-
-```json
-{
-  "mcpServers": {
-    "xianyuapis": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "${workspaceFolder}",
-        "run",
-        "xianyu-mcp"
-      ]
-    }
-  }
-}
-```
-
-- 也可通过 `Settings -> Cursor Settings -> MCP` 在 UI 中添加
-- 全局配置需使用仓库绝对路径
-- 配置完成后可在 Cursor 设置中查看服务状态
-
-### VS Code (GitHub Copilot)
-
-需 VS Code 1.102 及以上版本，并安装 GitHub Copilot 扩展。
-
-在项目根目录创建 `.vscode/mcp.json`：
-
-```json
-{
-  "servers": {
-    "xianyuapis": {
-      "type": "stdio",
-      "command": "uv",
-      "args": [
-        "--directory",
-        "${workspaceFolder}",
-        "run",
-        "xianyu-mcp"
-      ]
-    }
-  }
-}
-```
-
-注意：VS Code 的配置使用 `"servers"` 字段（不是 `"mcpServers"`），且需要显式声明 `"type": "stdio"`。
-
-- 也可通过命令面板运行 `Copilot: Add MCP Server` 按提示添加
-- 配置完成后，在 Copilot Chat 的 Agent 模式下即可调用
-
-### Cherry Studio
-
-Cherry Studio 通过 UI 配置 MCP 服务，不写配置文件。
-
-STDIO 模式接入：
-
-1. 打开 Cherry Studio，进入 `设置 -> MCP 服务器`
-2. 点击添加，类型选择 `STDIO`
-3. 填写：
-   - 名称：`xianyuapis`（可自定义）
-   - 命令：`uv`
-   - 参数：`--directory <仓库绝对路径> run xianyu-mcp`
-4. 保存并启用
-
-HTTP 模式接入（可选）：
-
-1. 先以 HTTP 模式启动 MCP 服务：`uv run xianyu-mcp --http`
-2. 在 Cherry Studio 中添加 MCP 服务器，类型选择 `SSE` 或 `HTTP`
-3. 填写地址：`http://localhost:8000/mcp`
-
-## 🧪 推荐验证流程
+## 推荐验证流程
 
 接入完成后，建议按这个顺序验证：
 
@@ -313,13 +232,9 @@ HTTP 模式接入（可选）：
 4. 如需店铺运维动作，再调用 `downshelf_item`
 5. 如需把已下架商品重新挂回去，再调用 `reshelf_item`
 
-## 💡 使用建议
+`list_my_items` 的 `page_size` 推荐使用默认值 `20`。某些账号或场景下，服务端会对单页条数做更严格限制，传过大可能返回 `FAIL_BIZ_FORBIDDEN`。
 
-- `list_my_items` 的 `page_size` 推荐使用默认值 `20`
-- 某些账号或场景下，服务端会对单页条数做更严格限制，传过大可能返回 `FAIL_BIZ_FORBIDDEN`
-- `server.py` 会在每次工具调用时重新读取 `.env`；如果 MCP 客户端自身缓存了进程或配置，更新 Cookie 后建议重载一次该 MCP 服务
-
-## ❓ 常见问题
+## 常见问题
 
 ### 1. Trae 检测不到闲鱼 MCP
 
@@ -351,13 +266,11 @@ HTTP 模式接入（可选）：
 
 ### 5. 仓库里有接口，但 MCP 没有对应工具
 
-`third_party/XianYuApis` 是底层能力库，`src/xianyu_mcp` 只封装了其中一部分高频场景。  
-当前并不是“底层所有 API 都自动暴露到 MCP”。例如 `prepublish_check`、`preget`、`edit_item` 等目前仍保留为底层调用能力。
+`third_party/pyxianyu` 是底层能力库，`src/xianyu_mcp` 只封装了其中一部分高频场景。`prepublish_check`、`preget` 等原语仍保留为底层调用能力，未单独暴露到 MCP。
 
 ### 6. 部分商品无法重新上架
 
-当前 `reshelf_item` 走的是闲鱼 PC 端编辑重发布链路。  
-如果商品本身被平台限制为“仅支持 App 发布/编辑”，接口会返回：
+如果商品本身被平台限制为"仅支持 App 发布/编辑"，接口会返回：
 
 - `FAIL_BIZ_PC_NOT_SUPPORT_PUBLISH_OR_EDIT`
 
@@ -366,17 +279,17 @@ HTTP 模式接入（可选）：
 - 虚拟商品通常会命中这类 PC 端管控，无法通过当前 MCP 重新上架
 - 支持 PC 编辑的实物商品，可以继续使用 `downshelf_item` / `reshelf_item`
 
-## 📚 相关文档
+## 相关文档
 
-- 底层项目说明：[`./third_party/XianYuApis/README.md`](./third_party/XianYuApis/README.md)
-- 商品列表接口记录：[`./third_party/XianYuApis/docs/mtop_idle_web_xyh_item_list.md`](./third_party/XianYuApis/docs/mtop_idle_web_xyh_item_list.md)
-- 商品下架接口记录：[`./third_party/XianYuApis/docs/mtop_taobao_idle_item_downshelf.md`](./third_party/XianYuApis/docs/mtop_taobao_idle_item_downshelf.md)
-- 商品预发布检查接口记录：[`./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_prepublish_check.md`](./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_prepublish_check.md)
-- 商品预取发布参数接口记录：[`./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_preget.md`](./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_preget.md)
-- 商品编辑详情接口记录：[`./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_edit_detail.md`](./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_edit_detail.md)
-- 商品编辑重发布接口记录：[`./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_edit.md`](./third_party/XianYuApis/docs/mtop_idle_pc_idleitem_edit.md)
+- 底层项目说明：[`./third_party/pyxianyu/README.md`](./third_party/pyxianyu/README.md)
+- 商品列表接口记录：[`./third_party/pyxianyu/docs/mtop_idle_web_xyh_item_list.md`](./third_party/pyxianyu/docs/mtop_idle_web_xyh_item_list.md)
+- 商品下架接口记录：[`./third_party/pyxianyu/docs/mtop_taobao_idle_item_downshelf.md`](./third_party/pyxianyu/docs/mtop_taobao_idle_item_downshelf.md)
+- 商品预发布检查接口记录：[`./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_prepublish_check.md`](./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_prepublish_check.md)
+- 商品预取发布参数接口记录：[`./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_preget.md`](./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_preget.md)
+- 商品编辑详情接口记录：[`./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_edit_detail.md`](./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_edit_detail.md)
+- 商品编辑重发布接口记录：[`./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_edit.md`](./third_party/pyxianyu/docs/mtop_idle_pc_idleitem_edit.md)
 
-## 📄 使用协议
+## 使用协议
 
 本项目采用 `GNU General Public License v3.0` 协议。
 

@@ -1,7 +1,7 @@
 [project]
 name = "xianyu-mcp"
 version = "0.1.0"
-description = "基于 XianYuApis 的闲鱼 MCP 服务"
+description = "基于 pyxianyu 的闲鱼 MCP 服务"
 requires-python = ">=3.11"
 dependencies = [
     "mcp[cli]>=1.0.0",
