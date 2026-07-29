@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -36,7 +37,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、我的商品列表查询、商品下架、商品重新上架、发布实体商品、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
     ),
 )
@@ -113,6 +114,22 @@ def reshelf_item(item_id: str, source_id: str = "") -> str:
         source_id: 可选。转发给 `mtop.idle.pc.idleitem.edit` 的 sourceId，留空时默认回退到 item_id。
     """
     return _get_tools().reshelf_item(item_id=item_id, source_id=source_id)
+
+
+@mcp.tool()
+def edit_item(
+    item_id: str,
+    payload: dict[str, Any] | None = None,
+    overrides: dict[str, Any] | None = None,
+) -> str:
+    """编辑指定商品信息（仅对支持 PC 编辑的实体商品有效）。
+
+    Args:
+        item_id: 商品 ID，例如 1048303755272。
+        payload: 可选。直接编辑模式，完整 payload（与 overrides 互斥）。
+        overrides: 可选。快速编辑模式，仅提供需要修改的字段（与 payload 互斥）。
+    """
+    return _get_tools().edit_item(item_id=item_id, payload=payload, overrides=overrides)
 
 
 @mcp.tool()

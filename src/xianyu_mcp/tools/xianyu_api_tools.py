@@ -13,6 +13,8 @@ from typing import Any
 import requests
 import websockets
 
+from ..guardrails import RequestGuardrails
+
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _XIANYU_APIS_ROOT = _REPO_ROOT / "third_party" / "pyxianyu"  # src/xianyu_mcp/tools -> src/xianyu_mcp -> src -> 仓库根
 
@@ -83,6 +85,7 @@ class XianYuApiTools:
         self._item_api = None
         self._media_api = None
         self._live = None
+        self._guardrails = RequestGuardrails()
 
     def _require_cookie(self) -> None:
         if not self.cookie_str:
@@ -123,7 +126,7 @@ class XianYuApiTools:
         return self._live
 
     def validate_login(self) -> str:
-        result = self._get_auth_api().get_token()
+        result = self._guardrails.run_read(lambda: self._get_auth_api().get_token())
         token = result.get("data", {}).get("accessToken", "")
         return _dump(
             {
@@ -135,7 +138,7 @@ class XianYuApiTools:
         )
 
     def refresh_login(self) -> str:
-        result = self._get_auth_api().refresh_token()
+        result = self._guardrails.run_read(lambda: self._get_auth_api().refresh_token())
         return _dump(
             {
                 "success": "data" in result or "ret" in result,
@@ -144,22 +147,26 @@ class XianYuApiTools:
         )
 
     def get_item_detail(self, item_id: str) -> str:
-        result = self._get_item_api().get_item_info(item_id)
+        result = self._guardrails.run_read(lambda: self._get_item_api().get_item_info(item_id))
         return _dump(result)
 
     def get_item_edit_detail(self, item_id: str) -> str:
         normalized_item_id = str(item_id).strip()
         if not normalized_item_id:
             raise ValueError("item_id 不能为空。")
-        result = self._get_item_api().get_item_edit_detail(normalized_item_id)
+        result = self._guardrails.run_read(
+            lambda: self._get_item_api().get_item_edit_detail(normalized_item_id)
+        )
         return _dump(result)
 
     def list_my_items(self, page_size: int = 20) -> str:
         normalized_page_size = min(max(page_size, 1), 50)
         user_id = self._get_current_user_id()
-        result = self._get_item_api().get_all_user_items(
-            user_id=user_id,
-            page_size=normalized_page_size,
+        result = self._guardrails.run_read(
+            lambda: self._get_item_api().get_all_user_items(
+                user_id=user_id,
+                page_size=normalized_page_size,
+            )
         )
         groups = [
             {
@@ -192,7 +199,9 @@ class XianYuApiTools:
         if not normalized_item_id:
             raise ValueError("item_id 不能为空。")
 
-        result = self._get_item_api().downshelf_item(normalized_item_id)
+        result = self._guardrails.run_write(
+            lambda: self._get_item_api().downshelf_item(normalized_item_id)
+        )
         return _dump(
             {
                 "success": bool(result.get("data", {}).get("success")),
@@ -208,9 +217,11 @@ class XianYuApiTools:
             raise ValueError("item_id 不能为空。")
 
         normalized_source_id = str(source_id).strip()
-        result = self._get_item_api().reshelf_item(
-            normalized_item_id,
-            source_id=normalized_source_id or None,
+        result = self._guardrails.run_write(
+            lambda: self._get_item_api().reshelf_item(
+                normalized_item_id,
+                source_id=normalized_source_id or None,
+            )
         )
         edit_result = result.get("editResult", {}) or {}
         edit_data = edit_result.get("data", {}) or {}
@@ -226,6 +237,77 @@ class XianYuApiTools:
                 "source_id": edit_payload.get("sourceId", ""),
                 "api": edit_result.get("api"),
                 "raw": result,
+            }
+        )
+
+    def edit_item(
+        self,
+        item_id: str,
+        *,
+        overrides: dict[str, Any] | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> str:
+        normalized_item_id = str(item_id).strip()
+        if not normalized_item_id:
+            raise ValueError("item_id 不能为空。")
+
+        if payload is not None and overrides is not None:
+            raise ValueError("payload 与 overrides 互斥，请仅提供其中一个。")
+        if payload is None and overrides is None:
+            raise ValueError("payload 与 overrides 至少需要提供一个。")
+
+        api = self._get_item_api()
+
+        def run(call):
+            edit_detail = None
+            if payload is not None:
+                request_payload = dict(payload or {})
+                request_payload["itemId"] = normalized_item_id
+                mode = "payload"
+            else:
+                edit_detail = call(lambda: api.get_item_edit_detail(normalized_item_id))
+                request_payload = api.build_reshelf_payload(edit_detail, item_id=normalized_item_id)
+                normalized_overrides = dict(overrides or {})
+                mode = "overrides"
+                if "title" in normalized_overrides:
+                    item_text = dict(request_payload.get("itemTextDTO") or {})
+                    item_text["title"] = str(normalized_overrides.pop("title")).strip()
+                    request_payload["itemTextDTO"] = item_text
+                if "desc" in normalized_overrides:
+                    item_text = dict(request_payload.get("itemTextDTO") or {})
+                    item_text["desc"] = str(normalized_overrides.pop("desc"))
+                    request_payload["itemTextDTO"] = item_text
+                if "price" in normalized_overrides:
+                    price_in_cent = str(
+                        int(float(str(normalized_overrides.pop("price")).strip()) * 100)
+                    )
+                    item_price = dict(request_payload.get("itemPriceDTO") or {})
+                    item_price["priceInCent"] = price_in_cent
+                    request_payload["itemPriceDTO"] = item_price
+                if normalized_overrides:
+                    self._deep_update(request_payload, normalized_overrides)
+
+            edit_result = call(lambda: api.edit_item(request_payload))
+            return edit_detail, request_payload, edit_result, mode
+
+        edit_detail, request_payload, edit_result, mode = self._guardrails.run_write_steps(run)
+        edit_data = edit_result.get("data", {}) or {}
+        ret = edit_result.get("ret") or []
+        success = bool(edit_data.get("success")) or any(
+            isinstance(item, str) and item.startswith("SUCCESS") for item in ret
+        )
+        return _dump(
+            {
+                "success": success,
+                "item_id": normalized_item_id,
+                "api": edit_result.get("api"),
+                "raw": {
+                    "itemId": normalized_item_id,
+                    "mode": mode,
+                    "editDetail": edit_detail,
+                    "editPayload": request_payload,
+                    "editResult": edit_result,
+                },
             }
         )
 
@@ -246,34 +328,35 @@ class XianYuApiTools:
         api = self._get_item_api()
         media_api = self._get_media_api()
 
-        # 上传所有图片
-        uploaded_images = []
-        for image_path in images:
-            upload_result = media_api.upload_media(image_path)
-            image_object = upload_result.get("object", {})
-            image_url = image_object.get("url", "")
-            if not image_url:
-                raise RuntimeError(f"图片上传失败: {image_path}")
-            uploaded_images.append(
-                {
-                    "url": image_url,
-                    "major": "true" if len(uploaded_images) == 0 else "false",
-                }
-            )
+        def run(call):
+            uploaded_images = []
+            for image_path in images:
+                upload_result = call(lambda: media_api.upload_media(image_path))
+                image_object = upload_result.get("object", {})
+                image_url = image_object.get("url", "")
+                if not image_url:
+                    raise RuntimeError(f"图片上传失败: {image_path}")
+                uploaded_images.append(
+                    {
+                        "url": image_url,
+                        "major": "true" if len(uploaded_images) == 0 else "false",
+                    }
+                )
 
-        # 构造 publish payload
-        payload = {
-            "itemTextDTO": {"title": title.strip(), "desc": desc.strip()},
-            "itemPriceDTO": {"priceInCent": str(int(float(price) * 100)), "currency": "CNY"},
-            "imageInfoDOList": uploaded_images,
-            "itemCatDTO": {"categoryId": "50013867"},  # 默认：书籍
-            "attribute": "全新",
-            "itemStatus": "0",
-            "itemTypeStr": "0",
-            "freightTemplateId": 0,
-        }
+            payload = {
+                "itemTextDTO": {"title": title.strip(), "desc": desc.strip()},
+                "itemPriceDTO": {"priceInCent": str(int(float(price) * 100)), "currency": "CNY"},
+                "imageInfoDOList": uploaded_images,
+                "itemCatDTO": {"categoryId": "50013867"},
+                "attribute": "全新",
+                "itemStatus": "0",
+                "itemTypeStr": "0",
+                "freightTemplateId": 0,
+            }
 
-        result = api.publish_item(payload)
+            return call(lambda: api.publish_item(payload))
+
+        result = self._guardrails.run_write_steps(run)
         new_item_id = (result.get("data", {}) or {}).get("itemId", "")
         success = bool(new_item_id) or any(
             isinstance(item, str) and item.startswith("SUCCESS")
@@ -288,13 +371,28 @@ class XianYuApiTools:
             }
         )
 
+    @staticmethod
+    def _deep_update(target: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
+        for key, value in patch.items():
+            if (
+                key in target
+                and isinstance(target.get(key), dict)
+                and isinstance(value, dict)
+            ):
+                XianYuApiTools._deep_update(target[key], value)
+            else:
+                target[key] = value
+        return target
+
     async def list_conversations(
         self,
         max_items: int = 1000,
         include_hidden: bool = False,
     ) -> str:
         normalized_max_items = min(max(max_items, 1), 1000)
-        conversations = await self._fetch_conversations(normalized_max_items)
+        conversations = await self._guardrails.run_read_async(
+            lambda: self._fetch_conversations(normalized_max_items)
+        )
         summaries = [self._normalize_conversation(conversation) for conversation in conversations]
         if not include_hidden:
             summaries = [summary for summary in summaries if summary.get("visible", True)]
@@ -310,7 +408,9 @@ class XianYuApiTools:
         )
 
     async def list_conversation_messages(self, cid: str, max_items: int = 50) -> str:
-        messages = await self._get_live().list_all_conversations(cid)
+        messages = await self._guardrails.run_read_async(
+            lambda: self._get_live().list_all_conversations(cid)
+        )
         if max_items > 0:
             messages = messages[-max_items:]
         return _dump(
@@ -323,11 +423,15 @@ class XianYuApiTools:
 
     async def send_text_message(self, to_user_id: str, item_id: str, text: str) -> str:
         modules = _load_xianyu_modules()
-        await self._get_live().send_msg_once(
-            to_user_id,
-            item_id,
-            modules["make_text"](text),
-        )
+
+        async def send():
+            await self._get_live().send_msg_once(
+                to_user_id,
+                item_id,
+                modules["make_text"](text),
+            )
+
+        await self._guardrails.run_write_async(send)
         return _dump(
             {
                 "success": True,
@@ -341,17 +445,25 @@ class XianYuApiTools:
         modules = _load_xianyu_modules()
         image_path, should_cleanup = self._prepare_image(image)
         try:
-            upload_result = await asyncio.to_thread(self._get_media_api().upload_media, image_path)
-            image_object = upload_result.get("object", {})
-            image_url = image_object.get("url")
-            if not image_url:
-                raise RuntimeError(f"图片上传失败: {_dump(upload_result)}")
-            width, height = self._parse_pix(image_object.get("pix", "0x0"))
-            await self._get_live().send_msg_once(
-                to_user_id,
-                item_id,
-                modules["make_image"](image_url, width, height),
-            )
+            async def run(call):
+                upload_result = await call(
+                    lambda: asyncio.to_thread(self._get_media_api().upload_media, image_path)
+                )
+                image_object = upload_result.get("object", {})
+                image_url = image_object.get("url")
+                if not image_url:
+                    raise RuntimeError(f"图片上传失败: {_dump(upload_result)}")
+                width, height = self._parse_pix(image_object.get("pix", "0x0"))
+                await call(
+                    lambda: self._get_live().send_msg_once(
+                        to_user_id,
+                        item_id,
+                        modules["make_image"](image_url, width, height),
+                    )
+                )
+                return upload_result
+
+            upload_result = await self._guardrails.run_write_steps_async(run)
             return _dump(
                 {
                     "success": True,
@@ -383,9 +495,8 @@ class XianYuApiTools:
 
     def _get_current_user_id(self) -> str:
         api = self._get_auth_api()
-        # 先换一次 accessToken，避免直接读 loginuser.get 时命中旧 token 过期。
-        api.get_token()
-        refresh_result = api.refresh_token()
+        self._guardrails.run_read(lambda: api.get_token())
+        refresh_result = self._guardrails.run_read(lambda: api.refresh_token())
         user_id = str(refresh_result.get("data", {}).get("userId", "")).strip()
         if not user_id:
             raise RuntimeError(f"未从登录态响应中拿到 userId: {_dump(refresh_result)}")

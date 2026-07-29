@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "xianyuapis": {
+    "xianyu-mcp-server": {
       "command": "uv",
       "args": [
         "--directory",

@@ -77,7 +77,7 @@ xianyu-mcp-server/
 
 ## 功能特性
 
-以下工具均已在实际闲鱼账号上验证可用：
+当前 MCP 已开放这些工具：
 
 | 工具名 | 说明 |
 | --- | --- |
@@ -88,6 +88,7 @@ xianyu-mcp-server/
 | `list_my_items` | 拉取当前账号名下全部商品列表，并自动翻页聚合 |
 | `downshelf_item` | 下架当前账号名下指定商品 |
 | `reshelf_item` | 通过 PC 编辑重发布链路重新上架指定商品 |
+| `edit_item` | 编辑指定商品信息（仅支持 PC 可编辑的实体商品） |
 | `publish_physical_item` | 在闲鱼 PC 端发布全新实体商品，支持自动上传图片 |
 | `list_conversations` | 拉取最近会话列表 |
 | `list_conversation_messages` | 拉取指定会话历史消息 |
@@ -111,7 +112,7 @@ xianyu-mcp-server/
 - `build_reshelf_payload`：基于编辑详情构造重发布 payload
 - `publish_item`：直接发布全新商品
 
-MCP 层已从中封装出 `get_item_edit_detail`、`reshelf_item`、`publish_physical_item` 三个工具。`prepublish_check`、`preget` 等原语仍保留为底层调用能力，未单独暴露。
+MCP 层已从中封装出 `get_item_edit_detail`、`reshelf_item`、`edit_item`、`publish_physical_item` 等工具。`prepublish_check`、`preget` 等原语仍保留为底层调用能力，未单独暴露。
 
 关于商品上下架，需要额外注意：
 
