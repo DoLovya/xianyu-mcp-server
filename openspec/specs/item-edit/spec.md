@@ -1,5 +1,8 @@
-## ADDED Requirements
+# item-edit Specification
 
+## Purpose
+TBD - created by archiving change edit-item-tool. Update Purpose after archive.
+## Requirements
 ### Requirement: 编辑商品信息
 系统 SHALL 提供编辑已发布商品信息的能力，支持修改标题、价格、描述、图片等核心字段。
 
@@ -34,3 +37,8 @@
 - `item_id` (string)：被编辑的商品 ID
 - `api` (string)：实际调用的 API 名称
 - `raw` (object)：闲鱼接口的原始响应
+
+#### Scenario: 编辑成功 — 返回字段齐全
+- **WHEN** 系统完成一次 `edit_item` 调用并返回成功响应
+- **THEN** 响应 SHALL 包含 `success`、`item_id`、`api`、`raw` 字段
+
