@@ -229,6 +229,65 @@ class XianYuApiTools:
             }
         )
 
+    def publish_physical_item(
+        self,
+        title: str,
+        price: str,
+        desc: str,
+        images: list[str],
+    ) -> str:
+        if not images:
+            raise ValueError("至少需要一张商品图片。")
+        if not title.strip():
+            raise ValueError("商品标题不能为空。")
+        if not price.strip():
+            raise ValueError("商品价格不能为空。")
+
+        api = self._get_item_api()
+        media_api = self._get_media_api()
+
+        # 上传所有图片
+        uploaded_images = []
+        for image_path in images:
+            upload_result = media_api.upload_media(image_path)
+            image_object = upload_result.get("object", {})
+            image_url = image_object.get("url", "")
+            if not image_url:
+                raise RuntimeError(f"图片上传失败: {image_path}")
+            uploaded_images.append(
+                {
+                    "url": image_url,
+                    "major": "true" if len(uploaded_images) == 0 else "false",
+                }
+            )
+
+        # 构造 publish payload
+        payload = {
+            "itemTextDTO": {"title": title.strip(), "desc": desc.strip()},
+            "itemPriceDTO": {"priceInCent": str(int(float(price) * 100)), "currency": "CNY"},
+            "imageInfoDOList": uploaded_images,
+            "itemCatDTO": {"categoryId": "50013867"},  # 默认：书籍
+            "attribute": "全新",
+            "itemStatus": "0",
+            "itemTypeStr": "0",
+            "freightTemplateId": 0,
+        }
+
+        result = api.publish_item(payload)
+        new_item_id = (result.get("data", {}) or {}).get("itemId", "")
+        success = bool(new_item_id) or any(
+            isinstance(item, str) and item.startswith("SUCCESS")
+            for item in (result.get("ret") or [])
+        )
+        return _dump(
+            {
+                "success": success,
+                "item_id": new_item_id,
+                "api": result.get("api"),
+                "raw": result,
+            }
+        )
+
     async def list_conversations(
         self,
         max_items: int = 1000,

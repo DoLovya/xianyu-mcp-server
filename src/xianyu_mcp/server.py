@@ -36,7 +36,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 XianYuApis 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、我的商品列表查询、商品下架、商品重新上架、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、我的商品列表查询、商品下架、商品重新上架、发布实体商品、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
     ),
 )
@@ -113,6 +113,24 @@ def reshelf_item(item_id: str, source_id: str = "") -> str:
         source_id: 可选。转发给 `mtop.idle.pc.idleitem.edit` 的 sourceId，留空时默认回退到 item_id。
     """
     return _get_tools().reshelf_item(item_id=item_id, source_id=source_id)
+
+
+@mcp.tool()
+def publish_physical_item(title: str, price: str, desc: str, images: list[str]) -> str:
+    """在闲鱼 PC 端发布全新的实体商品。支持自动上传图片并构造发布请求。
+
+    Args:
+        title: 商品标题。
+        price: 商品价格（元，例如 "99.00"）。
+        desc: 商品描述。
+        images: 商品图片路径列表，支持本地绝对路径或 http/https URL，至少 1 张。
+    """
+    return _get_tools().publish_physical_item(
+        title=title,
+        price=price,
+        desc=desc,
+        images=images,
+    )
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
