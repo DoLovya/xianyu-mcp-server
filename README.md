@@ -98,12 +98,15 @@ xianyu-mcp-server/
 | `list_conversation_messages` | 拉取指定会话历史消息 |
 | `send_text_message` | 主动发送文本消息 |
 | `send_image_message` | 主动发送图片消息 |
+| `qr_login_generate` | 生成扫码登录二维码（返回 session_id 与 base64 data-url） |
+| `qr_login_status` | 查询扫码登录会话状态（含人脸验证二维码 data-url） |
+| `qr_login_cookie` | 在扫码登录成功后获取完整 Cookie（已尽量补齐 `_m_h5_tk` 等关键字段） |
+| `qr_login_save_env` | 显式将 `qr_login_cookie` 的结果写入 `.env`（无需手动复制） |
 
 ## 已知限制
 
 以下能力尚未做 MCP 化：
 
-- 扫码登录
 - 常驻监听消息
 - 自动回复 Worker
 - 媒体上传独立 MCP 工具
@@ -131,7 +134,7 @@ MCP 层已从中封装出 `get_item_edit_detail`、`reshelf_item`、`edit_item`�
 
 - Python 3.11+
 - `uv`
-- 闲鱼登录后的完整 Cookie
+- 闲鱼登录后的完整 Cookie（可手动抓取，或先启动 MCP 后使用 `qr_login_*` 工具扫码获取）
 
 `uv` 安装方式（任选其一）：
 
@@ -169,6 +172,14 @@ XIANYU_COOKIE_FILE=./cookie.txt
 
 - 配置了 `XIANYU_COOKIE` 时，`XIANYU_COOKIE_FILE` 会被忽略
 - `XIANYU_COOKIE_FILE` 支持相对路径（相对仓库根目录）和绝对路径
+
+如果你暂时没有 Cookie：
+
+- 先保持 `.env` 为空启动 MCP
+- 调用 `qr_login_generate` 获取二维码并用手机闲鱼/淘宝扫码确认
+- 持续调用 `qr_login_status` 直到 `status=success`（如遇风控可能进入 `verification_required`，按提示完成一次验证）
+- 调用 `qr_login_cookie` 获取 Cookie
+- 可选：调用 `qr_login_save_env` 将 Cookie 写入仓库根目录 `.env`（避免手动复制；写入后通常无需重启，下一次工具调用会自动读取新值）
 
 ### 3. 安装依赖
 
@@ -251,8 +262,8 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 
 ### 2. `validate_login` 返回 `FAIL_SYS_USER_VALIDATE`
 
-通常表示当前 Cookie 已失效、不完整，或复制时缺少关键字段。  
-请重新从已登录浏览器中复制完整 Cookie，并更新仓库根目录下的 `.env`。
+通常表示当前 Cookie 已失效/不完整，或触发了更强风控校验。  
+建议优先走 `qr_login_generate/status/cookie` 重新获取；如果扫码后仍缺关键字段（例如 `_m_h5_tk` / `x5sec`）导致验证失败，需要按 `qr_login_status` 提示完成一次验证流程后再重试。
 
 ### 3. 修改 Cookie 后未生效
 

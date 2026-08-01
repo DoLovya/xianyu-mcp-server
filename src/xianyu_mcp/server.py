@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from .qr_login.manager import QRLoginManager
+from .qr_login.utils import dump_json
 from .tools.xianyu_api_tools import XianYuApiTools
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]  # src/xianyu_mcp -> src -> 仓库根
@@ -38,11 +40,12 @@ mcp = FastMCP(
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
         "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
-        "调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE。"
+        "大部分工具调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE；如无 Cookie，可先使用 qr_login_* 工具扫码获取。"
     ),
 )
 
 _tools: XianYuApiTools | None = None
+_qr_login: QRLoginManager | None = None
 
 
 def _get_tools() -> XianYuApiTools:
@@ -51,6 +54,13 @@ def _get_tools() -> XianYuApiTools:
     if _tools is None or _tools.cookie_str != cookie_str:
         _tools = XianYuApiTools(cookie_str=cookie_str)
     return _tools
+
+
+def _get_qr_login() -> QRLoginManager:
+    global _qr_login
+    if _qr_login is None:
+        _qr_login = QRLoginManager()
+    return _qr_login
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -204,6 +214,77 @@ async def send_image_message(to_user_id: str, item_id: str, image: str) -> str:
         to_user_id=to_user_id,
         item_id=item_id,
         image=image,
+    )
+
+
+@mcp.tool()
+async def qr_login_generate() -> str:
+    """生成闲鱼扫码登录二维码（data-url），并返回 session_id 用于后续查询。"""
+    result = await _get_qr_login().generate()
+    return dump_json(result)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def qr_login_status(session_id: str) -> str:
+    """查询扫码登录会话状态。"""
+    return dump_json(_get_qr_login().get_status(session_id))
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def qr_login_cookie(session_id: str) -> str:
+    """在扫码登录成功后，获取该会话的完整 Cookie。"""
+    return dump_json(_get_qr_login().get_cookie(session_id))
+
+
+@mcp.tool()
+def qr_login_save_env(session_id: str, env_path: str = ".env") -> str:
+    """将扫码登录成功后的 Cookie 写入指定 env 文件（显式调用才会写入）。"""
+    cookie_info = _get_qr_login().get_cookie(session_id)
+    if cookie_info.get("success") is not True:
+        return dump_json(cookie_info)
+
+    cookie_str = str(cookie_info.get("cookie") or "")
+    if "_m_h5_tk=" not in cookie_str:
+        return dump_json(
+            {
+                "success": False,
+                "status": "error",
+                "message": "missing_mtop_token",
+                "session_id": session_id,
+            }
+        )
+
+    target = Path(env_path).expanduser()
+    if not target.is_absolute():
+        target = (_REPO_ROOT / target).resolve()
+
+    lines: list[str] = []
+    if target.exists():
+        raw = target.read_text(encoding="utf-8")
+        lines = raw.splitlines()
+
+    value = f'XIANYU_COOKIE="{cookie_str}"'
+    updated = False
+    out_lines: list[str] = []
+    for line in lines:
+        if line.startswith("XIANYU_COOKIE="):
+            out_lines.append(value)
+            updated = True
+        else:
+            out_lines.append(line)
+    if not updated:
+        out_lines.append(value)
+
+    target.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    return dump_json(
+        {
+            "success": True,
+            "session_id": session_id,
+            "status": "saved",
+            "env_path": str(target),
+            "has_mtop_token": "_m_h5_tk=" in cookie_str and "_m_h5_tk_enc=" in cookie_str,
+            "has_x5sec": "x5sec=" in cookie_str,
+        }
     )
 
 

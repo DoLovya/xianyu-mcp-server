@@ -7,6 +7,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
@@ -93,11 +94,67 @@ class XianYuApiTools:
                 "未配置闲鱼 Cookie。请在 .env 中填写 XIANYU_COOKIE，或提供 XIANYU_COOKIE_FILE。"
             )
 
+    def _ensure_m_h5_tk(self, cookies: dict[str, str]) -> dict[str, str]:
+        if cookies.get("_m_h5_tk"):
+            return cookies
+
+        t = str(int(time.time() * 1000))
+        url = "https://h5api.m.goofish.com/h5/mtop.taobao.idlemessage.pc.login.token/1.0/"
+        params = {
+            "jsv": "2.7.2",
+            "appKey": "34839810",
+            "t": t,
+            "sign": "",
+            "v": "1.0",
+            "type": "originaljson",
+            "dataType": "json",
+            "timeout": "20000",
+            "api": "mtop.taobao.idlemessage.pc.login.token",
+            "sessionOption": "AutoLoginOnly",
+        }
+        headers = {
+            "accept": "application/json",
+            "accept-language": "en,zh-CN;q=0.9,zh;q=0.8,zh-TW;q=0.7,ja;q=0.6",
+            "cache-control": "no-cache",
+            "content-type": "application/x-www-form-urlencoded",
+            "origin": "https://www.goofish.com",
+            "pragma": "no-cache",
+            "referer": "https://www.goofish.com/",
+            "sec-fetch-dest": "empty",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-site": "same-site",
+            "user-agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/146.0.0.0 Safari/537.36"
+            ),
+        }
+        try:
+            bootstrap_cookies: dict[str, str] = {}
+            if cookies.get("cookie2"):
+                bootstrap_cookies["cookie2"] = cookies["cookie2"]
+            resp = requests.post(
+                url,
+                params=params,
+                headers=headers,
+                data={"data": "{}"},
+                cookies=bootstrap_cookies,
+                timeout=30,
+            )
+            resp.raise_for_status()
+            for k, v in resp.cookies.items():
+                cookies[k] = v
+        except requests.RequestException:
+            return cookies
+
+        return cookies
+
     def _ensure_rest_apis(self) -> None:
         self._require_cookie()
         if self._client is None:
             modules = _load_xianyu_modules()
             cookies = modules["trans_cookies"](self.cookie_str)
+            cookies = self._ensure_m_h5_tk(cookies)
             if "unb" not in cookies:
                 raise ValueError("Cookie 中缺少 unb 字段，无法生成 device_id。")
             device_id = modules["generate_device_id"](cookies["unb"])
