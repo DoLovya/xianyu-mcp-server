@@ -176,10 +176,20 @@ XIANYU_COOKIE_FILE=./cookie.txt
 如果你暂时没有 Cookie：
 
 - 先保持 `.env` 为空启动 MCP
+- 启动后服务会自动进入“首次配置模式”，在本机打开一个网页展示二维码（`127.0.0.1`），扫码成功后会自动把 Cookie 写回 `.env`
 - 调用 `qr_login_generate` 获取二维码并用手机闲鱼/淘宝扫码确认
 - 持续调用 `qr_login_status` 直到 `status=success`（如遇风控可能进入 `verification_required`，按提示完成一次验证）
 - 调用 `qr_login_cookie` 获取 Cookie
 - 可选：调用 `qr_login_save_env` 将 Cookie 写入仓库根目录 `.env`（避免手动复制；写入后通常无需重启，下一次工具调用会自动读取新值）
+
+首次配置模式相关开关（可选）：
+
+```ini
+XIANYU_SETUP_ENABLED=1        # 0 表示禁用首次配置模式
+XIANYU_SETUP_AUTOSTART=1      # 0 表示启动时不自动弹出（但工具调用仍会返回 requires_login 引导）
+XIANYU_SETUP_AUTO_OPEN=1      # 0 表示不自动打开浏览器/验证链接
+XIANYU_SETUP_AUTO_WRITE_ENV=1 # 0 表示不自动写入 .env，需要你手动调用 qr_login_save_env
+```
 
 ### 3. 安装依赖
 

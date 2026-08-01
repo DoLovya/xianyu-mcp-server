@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from .first_run_setup import FirstRunSetup
 from .qr_login.manager import QRLoginManager
 from .qr_login.utils import dump_json
 from .tools.xianyu_api_tools import XianYuApiTools
@@ -46,6 +47,7 @@ mcp = FastMCP(
 
 _tools: XianYuApiTools | None = None
 _qr_login: QRLoginManager | None = None
+_first_run_setup: FirstRunSetup | None = None
 
 
 def _get_tools() -> XianYuApiTools:
@@ -63,15 +65,48 @@ def _get_qr_login() -> QRLoginManager:
     return _qr_login
 
 
+def _get_first_run_setup() -> FirstRunSetup:
+    global _first_run_setup
+    if _first_run_setup is None:
+        _first_run_setup = FirstRunSetup(
+            repo_root=_REPO_ROOT,
+            get_qr_login=_get_qr_login,
+            load_cookie_str=_load_cookie_str,
+        )
+    return _first_run_setup
+
+
+def _truthy(value: str) -> bool:
+    return value.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _maybe_requires_login_payload() -> dict[str, Any] | None:
+    if _load_cookie_str():
+        return None
+    setup = _get_first_run_setup()
+    setup.ensure_started()
+    return setup.get_state_payload()
+
+
+if _truthy(os.environ.get("XIANYU_SETUP_AUTOSTART", "1")):
+    _get_first_run_setup().ensure_started()
+
+
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def validate_login() -> str:
     """校验当前 Cookie 对应的闲鱼登录态，并尝试获取 accessToken。"""
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().validate_login()
 
 
 @mcp.tool()
 def refresh_login() -> str:
     """刷新当前登录态对应的 token/cookie。"""
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().refresh_login()
 
 
@@ -82,6 +117,9 @@ def get_item_detail(item_id: str) -> str:
     Args:
         item_id: 商品 ID，例如 1001160709960。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().get_item_detail(item_id=item_id)
 
 
@@ -92,6 +130,9 @@ def get_item_edit_detail(item_id: str) -> str:
     Args:
         item_id: 商品 ID，例如 1048303755272。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().get_item_edit_detail(item_id=item_id)
 
 
@@ -102,6 +143,9 @@ def list_my_items(page_size: int = 20) -> str:
     Args:
         page_size: 单页拉取条数，默认 20，当前会限制在 1 到 50 之间。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().list_my_items(page_size=page_size)
 
 
@@ -112,6 +156,9 @@ def downshelf_item(item_id: str) -> str:
     Args:
         item_id: 商品 ID，例如 897705472395。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().downshelf_item(item_id=item_id)
 
 
@@ -123,6 +170,9 @@ def reshelf_item(item_id: str, source_id: str = "") -> str:
         item_id: 商品 ID，例如 1048303755272。
         source_id: 可选。转发给 `mtop.idle.pc.idleitem.edit` 的 sourceId，留空时默认回退到 item_id。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().reshelf_item(item_id=item_id, source_id=source_id)
 
 
@@ -139,6 +189,9 @@ def edit_item(
         payload: 可选。直接编辑模式，完整 payload（与 overrides 互斥）。
         overrides: 可选。快速编辑模式，仅提供需要修改的字段（与 payload 互斥）。
     """
+    payload2 = _maybe_requires_login_payload()
+    if payload2:
+        return dump_json(payload2)
     return _get_tools().edit_item(item_id=item_id, payload=payload, overrides=overrides)
 
 
@@ -152,6 +205,9 @@ def publish_physical_item(title: str, price: str, desc: str, images: list[str]) 
         desc: 商品描述。
         images: 商品图片路径列表，支持本地绝对路径或 http/https URL，至少 1 张。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return _get_tools().publish_physical_item(
         title=title,
         price=price,
@@ -168,6 +224,9 @@ async def list_conversations(max_items: int = 1000, include_hidden: bool = False
         max_items: 最多返回多少个会话，默认 1000，当前单次上限 1000。
         include_hidden: 是否包含已隐藏会话，默认 False。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return await _get_tools().list_conversations(
         max_items=max_items,
         include_hidden=include_hidden,
@@ -182,6 +241,9 @@ async def list_conversation_messages(cid: str, max_items: int = 50) -> str:
         cid: 会话 ID，不带 @goofish 后缀。
         max_items: 最多返回多少条最近消息，默认 50。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return await _get_tools().list_conversation_messages(cid=cid, max_items=max_items)
 
 
@@ -194,6 +256,9 @@ async def send_text_message(to_user_id: str, item_id: str, text: str) -> str:
         item_id: 建聊时绑定的商品 ID。
         text: 要发送的文本内容。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return await _get_tools().send_text_message(
         to_user_id=to_user_id,
         item_id=item_id,
@@ -210,6 +275,9 @@ async def send_image_message(to_user_id: str, item_id: str, image: str) -> str:
         item_id: 建聊时绑定的商品 ID。
         image: 本地图片绝对路径，或 http/https 图片地址。
     """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
     return await _get_tools().send_image_message(
         to_user_id=to_user_id,
         item_id=item_id,
