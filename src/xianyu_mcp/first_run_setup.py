@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import json
+import mimetypes
 import os
 import threading
 import time
@@ -11,6 +13,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 from .qr_login.manager import QRLoginManager
 
@@ -127,6 +130,7 @@ class FirstRunSetup:
             return
 
         setup = self
+        static_root = importlib.resources.files("xianyu_mcp") / "static"
 
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, format: str, *args: Any) -> None:
@@ -140,11 +144,32 @@ class FirstRunSetup:
                 self.wfile.write(body)
 
             def do_GET(self) -> None:
-                if self.path.startswith("/status"):
+                path = urlparse(self.path).path
+
+                if path.startswith("/status"):
                     body = _dump_json(setup.get_state_payload()).encode("utf-8")
                     self._write(HTTPStatus.OK, "application/json; charset=utf-8", body)
                     return
-                if self.path != "/" and not self.path.startswith("/?"):
+
+                if path.startswith("/static/"):
+                    rel = path.removeprefix("/static/").lstrip("/")
+                    if not rel or ".." in rel.split("/"):
+                        self._write(HTTPStatus.NOT_FOUND, "text/plain; charset=utf-8", b"not found")
+                        return
+
+                    asset_path = static_root.joinpath(*rel.split("/"))
+                    if not asset_path.is_file():
+                        self._write(HTTPStatus.NOT_FOUND, "text/plain; charset=utf-8", b"not found")
+                        return
+
+                    data = asset_path.read_bytes()
+                    content_type = mimetypes.guess_type(asset_path.name)[0] or "application/octet-stream"
+                    if content_type.startswith("text/"):
+                        content_type = content_type + "; charset=utf-8"
+                    self._write(HTTPStatus.OK, content_type, data)
+                    return
+
+                if path != "/":
                     self._write(HTTPStatus.NOT_FOUND, "text/plain; charset=utf-8", b"not found")
                     return
 
@@ -164,72 +189,14 @@ class FirstRunSetup:
             webbrowser.open(local_url)
 
     def _render_html(self) -> str:
-        return """<!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>闲鱼 MCP 首次配置</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial; margin: 24px; }
-    .row { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
-    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; width: 360px; }
-    .muted { color: #6b7280; font-size: 14px; }
-    img { max-width: 100%; height: auto; }
-    code { background: #f3f4f6; padding: 2px 6px; border-radius: 6px; }
-    a { color: #2563eb; }
-  </style>
-</head>
-<body>
-  <h2>闲鱼 MCP 首次配置</h2>
-  <div class="muted">扫码登录后会自动写入 <code>.env</code> 的 <code>XIANYU_COOKIE</code>。</div>
-  <div class="row" style="margin-top: 16px;">
-    <div class="card">
-      <div><b>状态</b>: <span id="status">initializing</span></div>
-      <div class="muted" id="session"></div>
-      <div style="margin-top: 12px;">
-        <img id="qr" alt="qr" />
-      </div>
-    </div>
-    <div class="card">
-      <div><b>验证入口</b></div>
-      <div class="muted" id="verifyHint">无</div>
-      <div style="margin-top: 12px;">
-        <a id="verifyLink" target="_blank" rel="noreferrer"></a>
-      </div>
-      <div style="margin-top: 12px;">
-        <img id="faceqr" alt="faceqr" />
-      </div>
-    </div>
-  </div>
-  <script>
-    async function tick() {
-      const res = await fetch("/status", { cache: "no-store" });
-      const st = await res.json();
-      document.getElementById("status").textContent = st.status || "unknown";
-      document.getElementById("session").textContent = st.session_id ? ("session_id: " + st.session_id) : "";
-      const qr = document.getElementById("qr");
-      if (st.qr_data_url) qr.src = st.qr_data_url;
-      const verifyHint = document.getElementById("verifyHint");
-      const verifyLink = document.getElementById("verifyLink");
-      if (st.verification_url) {
-        verifyHint.textContent = "需要验证";
-        verifyLink.textContent = st.verification_url;
-        verifyLink.href = st.verification_url;
-      } else {
-        verifyHint.textContent = "无";
-        verifyLink.textContent = "";
-        verifyLink.href = "";
-      }
-      const faceqr = document.getElementById("faceqr");
-      if (st.face_qr_data_url) faceqr.src = st.face_qr_data_url;
-    }
-    tick();
-    setInterval(tick, 1000);
-  </script>
-</body>
-</html>
-"""
+        try:
+            return (
+                importlib.resources.files("xianyu_mcp")
+                .joinpath("static", "first_run_setup", "index.html")
+                .read_text(encoding="utf-8")
+            )
+        except Exception:
+            return "<!doctype html><meta charset='utf-8'><title>闲鱼 MCP 首次配置</title><p>页面资源加载失败</p>"
 
     def _run_orchestrator(self) -> None:
         self._set_state(status="initializing")

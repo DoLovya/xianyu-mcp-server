@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>闲鱼 MCP 首次配置</title>
+  <link rel="stylesheet" href="/static/first_run_setup/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>闲鱼 MCP 首次配置</h1>
+    <div class="sub">扫码成功后会尝试写入 <code>.env</code> 的 <code>XIANYU_COOKIE</code>。如出现验证要求，请在右侧按提示完成。</div>
+
+    <div class="row">
+      <div class="card">
+        <h2>扫码登录</h2>
+        <div class="kv">
+          <div class="k">状态</div>
+          <div class="v">
+            <span class="badge"><span id="dot" class="dot"></span><span id="status">initializing</span></span>
+          </div>
+          <div class="k">session</div>
+          <div class="v mono" id="session">-</div>
+          <div class="k">写入</div>
+          <div class="v" id="envWritten">-</div>
+        </div>
+        <div class="qrWrap">
+          <img id="qr" alt="qr" class="hidden" />
+          <div id="qrHint" class="hint">二维码加载中…</div>
+        </div>
+        <div id="error" class="hint hidden error"></div>
+      </div>
+
+      <div class="card">
+        <h2>验证入口</h2>
+        <div id="verifyNone" class="hint">无</div>
+        <div id="verifyBox" class="hidden">
+          <div class="hint mb8">需要验证，请打开链接完成一次校验：</div>
+          <a id="verifyLink" class="mono" target="_blank" rel="noreferrer"></a>
+          <div class="sep"></div>
+          <div class="hint mb10">或使用下方二维码（如适用）：</div>
+          <div class="qrWrap min260">
+            <img id="faceqr" alt="faceqr" class="hidden" />
+            <div id="faceHint" class="hint">等待验证码…</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/static/first_run_setup/app.js"></script>
+</body>
+</html>
+

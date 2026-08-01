@@ -20,7 +20,7 @@ load_dotenv(_REPO_ROOT / ".env")
 def _load_cookie_str() -> str:
     # Re-read .env on every tool invocation so a long-lived MCP process can
     # pick up newly updated credentials without requiring a manual restart.
-    load_dotenv(_REPO_ROOT / ".env", override=True)
+    load_dotenv(_REPO_ROOT / ".env", override=False)
 
     cookie_str = os.environ.get("XIANYU_COOKIE", "").strip()
     if cookie_str:

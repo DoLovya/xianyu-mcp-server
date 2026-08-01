@@ -226,11 +226,19 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
   "mcpServers": {
     "xianyu-mcp-server": {
       "command": "uv",
-      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"]
+      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"],
+      "env": {
+        "XIANYU_COOKIE": "",
+        "XIANYU_COOKIE_FILE": ""
+      }
     }
   }
 }
 ```
+
+Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU_COOKIE_FILE` 指向一个被 `.gitignore` 忽略的文件路径（例如 `artifacts/xianyu_cookie.txt`），避免把 Cookie 写进配置文件并误提交到仓库。
+
+注意：如果你的 Trae 版本不允许自动修改 `.trae/mcp.json`，请手动把上面 `env` 片段补到你的 `.trae/mcp.json` 对应 server 配置里，然后重载工作区即可看到输入框。
 
 各客户端差异：
 

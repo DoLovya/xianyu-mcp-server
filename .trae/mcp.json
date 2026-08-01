@@ -7,7 +7,11 @@
         "${workspaceFolder}",
         "run",
         "xianyu-mcp"
-      ]
+      ],
+      "env": {
+        "XIANYU_COOKIE": "",
+        "XIANYU_COOKIE_FILE": ""
+      }
     }
   }
 }

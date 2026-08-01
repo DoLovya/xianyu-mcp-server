@@ -23,6 +23,7 @@ xianyu-mcp = "xianyu_mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xianyu_mcp"]
+include = ["src/xianyu_mcp/static/**"]
 
 [build-system]
 requires = ["hatchling"]
