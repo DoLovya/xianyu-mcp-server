@@ -14,3 +14,18 @@ __pycache__/
 artifacts/
 
 scripts/
+
+# 本地运行日志（默认落盘目录）
+/.logs/
+*.log
+*.log.*
+
+# 测试/构建产物
+/.pytest_cache/
+/.coverage
+/htmlcov/
+/dist/
+/build/
+/*.egg-info/
+/.mypy_cache/
+/.ruff_cache/
