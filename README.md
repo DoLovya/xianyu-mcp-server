@@ -95,6 +95,7 @@ xianyu-mcp-server/
 | `reshelf_item` | 通过 PC 编辑重发布链路重新上架指定商品 |
 | `edit_item` | 编辑指定商品信息（仅支持 PC 可编辑的实体商品） |
 | `publish_physical_item` | 在闲鱼 PC 端发布全新实体商品，支持自动上传图片 |
+| `upload_media` | 上传本地文件或 URL 素材，返回可复用的媒体 URL |
 | `list_conversations` | 拉取最近会话列表 |
 | `list_conversation_messages` | 拉取指定会话历史消息 |
 | `send_text_message` | 主动发送文本消息 |
@@ -104,13 +105,19 @@ xianyu-mcp-server/
 | `qr_login_cookie` | 在扫码登录成功后获取完整 Cookie（已尽量补齐 `_m_h5_tk` 等关键字段） |
 | `qr_login_save_env` | 显式将 `qr_login_cookie` 的结果写入 `.env`（无需手动复制） |
 
+### 多媒体相关用法
+
+- 直接上传素材拿到可复用 URL：调用 `upload_media`，将返回的 `url` 保存起来，用于后续构造 `edit_item` payload 或消息内容。
+- 发布商品图：优先直接用 `publish_physical_item(images=[...])`，内部会自动上传并构造 `imageInfoDOList`。
+- 发送图片消息：调用 `send_image_message(image=...)`，支持本地绝对路径或 http/https URL。
+
 ## 已知限制
 
 以下能力尚未做 MCP 化：
 
 - 常驻监听消息
 - 自动回复 Worker
-- 媒体上传独立 MCP 工具
+- 语音/视频消息发送工具
 
 底层 `third_party/pyxianyu` 的 `ItemApi` 已实现完整的商品发布原语链路：
 

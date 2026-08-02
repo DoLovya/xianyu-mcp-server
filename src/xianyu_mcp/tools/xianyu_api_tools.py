@@ -384,34 +384,48 @@ class XianYuApiTools:
 
         api = self._get_item_api()
         media_api = self._get_media_api()
+        publish_template = self._guardrails.run_read(lambda: api.preget())
 
         def run(call):
+            request_payload = api.build_reshelf_payload(publish_template)
+            request_payload.pop("itemId", None)
+            request_payload["sourceId"] = "publish"
+
             uploaded_images = []
-            for image_path in images:
-                upload_result = call(lambda: media_api.upload_media(image_path))
-                image_object = upload_result.get("object", {})
-                image_url = image_object.get("url", "")
-                if not image_url:
-                    raise RuntimeError(f"图片上传失败: {image_path}")
-                uploaded_images.append(
-                    {
-                        "url": image_url,
-                        "major": "true" if len(uploaded_images) == 0 else "false",
-                    }
-                )
+            temp_paths: list[str] = []
+            try:
+                for image_path in images:
+                    local_path, should_cleanup = self._prepare_media(image_path)
+                    if should_cleanup:
+                        temp_paths.append(local_path)
+                    upload_result = call(lambda: media_api.upload_media(local_path))
+                    image_object = upload_result.get("object", {})
+                    image_url = image_object.get("url", "")
+                    if not image_url:
+                        raise RuntimeError(f"图片上传失败: {image_path}")
+                    uploaded_images.append(
+                        {
+                            "url": image_url,
+                            "major": "true" if len(uploaded_images) == 0 else "false",
+                        }
+                    )
 
-            payload = {
-                "itemTextDTO": {"title": title.strip(), "desc": desc.strip()},
-                "itemPriceDTO": {"priceInCent": str(int(float(price) * 100)), "currency": "CNY"},
-                "imageInfoDOList": uploaded_images,
-                "itemCatDTO": {"categoryId": "50013867"},
-                "attribute": "全新",
-                "itemStatus": "0",
-                "itemTypeStr": "0",
-                "freightTemplateId": 0,
-            }
+                item_text = dict(request_payload.get("itemTextDTO") or {})
+                item_text["title"] = title.strip()
+                item_text["desc"] = desc.strip()
+                request_payload["itemTextDTO"] = item_text
 
-            return call(lambda: api.publish_item(payload))
+                item_price = dict(request_payload.get("itemPriceDTO") or {})
+                item_price["priceInCent"] = str(int(float(price) * 100))
+                if "currency" not in item_price:
+                    item_price["currency"] = "CNY"
+                request_payload["itemPriceDTO"] = item_price
+
+                request_payload["imageInfoDOList"] = uploaded_images
+                return call(lambda: api.publish_item(request_payload))
+            finally:
+                for path in temp_paths:
+                    Path(path).unlink(missing_ok=True)
 
         result = self._guardrails.run_write_steps(run)
         new_item_id = (result.get("data", {}) or {}).get("itemId", "")
@@ -427,6 +441,31 @@ class XianYuApiTools:
                 "raw": result,
             }
         )
+
+    def upload_media(self, media: str) -> str:
+        media_path, should_cleanup = self._prepare_media(media)
+        try:
+            def run(call):
+                return call(lambda: self._get_media_api().upload_media(media_path))
+
+            upload_result = self._guardrails.run_write_steps(run)
+            image_object = upload_result.get("object", {}) or {}
+            url = str(image_object.get("url") or "").strip()
+            pix = str(image_object.get("pix") or "").strip()
+            width, height = self._parse_pix(pix) if pix else (0, 0)
+            return _dump(
+                {
+                    "success": bool(url),
+                    "url": url,
+                    "pix": pix,
+                    "width": width,
+                    "height": height,
+                    "raw": upload_result,
+                }
+            )
+        finally:
+            if should_cleanup:
+                Path(media_path).unlink(missing_ok=True)
 
     @staticmethod
     def _deep_update(target: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
@@ -500,7 +539,7 @@ class XianYuApiTools:
 
     async def send_image_message(self, to_user_id: str, item_id: str, image: str) -> str:
         modules = _load_xianyu_modules()
-        image_path, should_cleanup = self._prepare_image(image)
+        image_path, should_cleanup = self._prepare_media(image)
         try:
             async def run(call):
                 upload_result = await call(
@@ -534,9 +573,21 @@ class XianYuApiTools:
             if should_cleanup:
                 Path(image_path).unlink(missing_ok=True)
 
+    def _prepare_media(self, media: str) -> tuple[str, bool]:
+        return self._prepare_image(media)
+
     def _prepare_image(self, image: str) -> tuple[str, bool]:
         if image.startswith("http://") or image.startswith("https://"):
-            response = requests.get(image, timeout=30)
+            headers = {
+                "user-agent": (
+                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/126.0.0.0 Safari/537.36"
+                ),
+                "referer": "https://www.goofish.com/",
+                "accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            }
+            response = requests.get(image, headers=headers, timeout=30)
             response.raise_for_status()
             suffix = Path(image).suffix or ".png"
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
@@ -552,7 +603,10 @@ class XianYuApiTools:
 
     def _get_current_user_id(self) -> str:
         api = self._get_auth_api()
-        self._guardrails.run_read(lambda: api.get_token())
+        try:
+            self._guardrails.run_read(lambda: api.get_token())
+        except Exception:
+            pass
         refresh_result = self._guardrails.run_read(lambda: api.refresh_token())
         user_id = str(refresh_result.get("data", {}).get("userId", "")).strip()
         if not user_id:
