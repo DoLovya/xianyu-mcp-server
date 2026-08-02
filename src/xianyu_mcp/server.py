@@ -99,7 +99,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "大部分工具调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE；如无 Cookie，可先使用 qr_login_* 工具扫码获取。"
     ),
 )
@@ -338,6 +338,19 @@ async def send_image_message(to_user_id: str, item_id: str, image: str) -> str:
         item_id=item_id,
         image=image,
     )
+
+
+@mcp.tool()
+def upload_media(media: str) -> str:
+    """上传本地文件或 URL 素材，并返回可复用的媒体 URL。
+
+    Args:
+        media: 本地文件绝对路径，或 http/https 媒体地址。
+    """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
+    return _get_tools().upload_media(media=media)
 
 
 @mcp.tool()
