@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: false
+        default: ""
+      publish_pypi:
+        type: boolean
+        required: false
+        default: false
+      pypi_via_token:
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      UV_INDEX_URL: ${{ vars.UV_INDEX_URL }}
+      UV_EXTRA_INDEX_URL: ${{ vars.UV_EXTRA_INDEX_URL }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --frozen
+      - name: Release precheck
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import os
+          import re
+          import sys
+          import tomllib
+          tag = os.environ.get("TAG", "")
+          if not re.fullmatch(r"v\\d+\\.\\d+\\.\\d+(?:[-+].+)?", tag):
+              raise SystemExit(f"Tag format invalid: {tag!r}. Expected vX.Y.Z")
+          with open("pyproject.toml", "rb") as f:
+              data = tomllib.load(f)
+          version = (data.get("project", {}) or {}).get("version", "")
+          if not version:
+              raise SystemExit("pyproject.toml missing [project].version")
+          if tag.lstrip("v") != version:
+              raise SystemExit(f"Version mismatch: tag={tag.lstrip('v')} pyproject={version}")
+          print(f"OK: tag={tag} version={version}")
+          PY
+      - name: Build wheel and sdist
+        run: |
+          uv pip install build
+          uv run python -m build
+          ls -la dist
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          files: dist/*
+          fail_on_unmatched_files: true
+      - name: Publish to PyPI (Trusted Publishing)
+        if: ${{ ((github.event_name == 'workflow_dispatch' && inputs.publish_pypi && !inputs.pypi_via_token) || (github.event_name == 'push' && vars.PUBLISH_PYPI_ON_TAG == '1')) }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI (API Token)
+        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_pypi && inputs.pypi_via_token && secrets.PYPI_API_TOKEN != '') }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
