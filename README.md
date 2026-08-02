@@ -1,6 +1,7 @@
 # xianyu-mcp-server
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
+[![CI](https://github.com/DoLovya/xianyu-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/DoLovya/xianyu-mcp-server/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](./pyproject.toml)
 
@@ -315,6 +316,7 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 
 ## 相关文档
 
+- CI/CD：[`./docs/ci-cd.md`](./docs/ci-cd.md)
 - 底层项目说明：[`./third_party/pyxianyu/README.md`](./third_party/pyxianyu/README.md)
 - 商品列表接口记录：[`./third_party/pyxianyu/docs/mtop_idle_web_xyh_item_list.md`](./third_party/pyxianyu/docs/mtop_idle_web_xyh_item_list.md)
 - 商品下架接口记录：[`./third_party/pyxianyu/docs/mtop_taobao_idle_item_downshelf.md`](./third_party/pyxianyu/docs/mtop_taobao_idle_item_downshelf.md)
