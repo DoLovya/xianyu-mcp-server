@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import urlparse
 
+from loguru import logger
+
 from .qr_login.manager import QRLoginManager
 
 
@@ -95,6 +97,7 @@ class FirstRunSetup:
         with self._lock:
             if self._orchestrator_thread and self._orchestrator_thread.is_alive():
                 return
+            logger.info("first_run_setup start repo_root={}", str(self._repo_root))
             t = threading.Thread(target=self._run_orchestrator, name="xianyu-first-run-setup", daemon=True)
             self._orchestrator_thread = t
             t.start()
@@ -181,6 +184,7 @@ class FirstRunSetup:
         port = int(server.server_address[1])
         local_url = f"http://127.0.0.1:{port}/"
         self._set_state(local_url=local_url)
+        logger.info("first_run_setup web_ui={}", local_url)
         t = threading.Thread(target=server.serve_forever, name="xianyu-first-run-web", daemon=True)
         self._server_thread = t
         t.start()
@@ -204,18 +208,22 @@ class FirstRunSetup:
 
         qr_login = self._get_qr_login()
         last_opened_verification_url = ""
+        last_status = ""
         try:
             result = asyncio.run(qr_login.generate())
-        except Exception as e:
-            self._set_state(status="error", error_message=type(e).__name__)
+        except Exception:
+            logger.exception("first_run_setup qr_login_generate failed")
+            self._set_state(status="error", error_message="generate_failed")
             return
 
         if not result.get("success"):
+            logger.warning("first_run_setup qr_login_generate not_success error={}", str(result.get("error_message") or ""))
             self._set_state(status="error", error_message=str(result.get("error_message") or "generate_failed"))
             return
 
         session_id = str(result.get("session_id") or "")
         qr_data_url = str(result.get("qr_data_url") or "")
+        logger.info("first_run_setup qr_ready session_id={}", session_id)
         self._set_state(session_id=session_id, qr_data_url=qr_data_url, status=str(result.get("status") or "waiting"))
 
         while True:
@@ -232,6 +240,9 @@ class FirstRunSetup:
             )
 
             status = str(status_info.get("status") or "")
+            if status and status != last_status:
+                logger.info("first_run_setup status session_id={} status={}", session_id, status)
+                last_status = status
             verification_url = str(status_info.get("verification_url") or "")
             if (
                 status == "verification_required"
@@ -241,15 +252,28 @@ class FirstRunSetup:
             ):
                 webbrowser.open(verification_url)
                 last_opened_verification_url = verification_url
+                logger.info("first_run_setup verification_url_opened session_id={}", session_id)
             if status == "success":
                 cookie_info = qr_login.get_cookie(session_id)
                 cookie_str = str(cookie_info.get("cookie") or "")
-                if self.auto_write_env() and cookie_str and "_m_h5_tk=" in cookie_str:
-                    _write_env_cookie(self._repo_root / ".env", cookie_str)
-                    self._set_state(env_written=True)
+                if self.auto_write_env() and cookie_str:
+                    try:
+                        _write_env_cookie(self._repo_root / ".env", cookie_str)
+                        self._set_state(env_written=True)
+                        logger.info(
+                            "first_run_setup env_written session_id={} env_path={} cookie_len={} has_m_h5_tk={}",
+                            session_id,
+                            str(self._repo_root / ".env"),
+                            len(cookie_str),
+                            "_m_h5_tk=" in cookie_str,
+                        )
+                    except Exception as e:
+                        self._set_state(error_message=type(e).__name__)
+                        logger.exception("first_run_setup env_write_failed session_id={} error={}", session_id, type(e).__name__)
                 self._set_state(status="done")
                 return
             if status in {"expired", "cancelled", "error"}:
+                logger.warning("first_run_setup stopped session_id={} status={}", session_id, status)
                 return
 
             time.sleep(1.0)

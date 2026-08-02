@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+from loguru import logger
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -13,8 +15,65 @@ from .qr_login.manager import QRLoginManager
 from .qr_login.utils import dump_json
 from .tools.xianyu_api_tools import XianYuApiTools
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]  # src/xianyu_mcp -> src -> 仓库根
+
+def _truthy(value: str) -> bool:
+    return value.strip().lower() not in {"", "0", "false", "no", "off"}
+
+
+def _resolve_repo_root() -> Path:
+    env_root = os.environ.get("XIANYU_REPO_ROOT", "").strip()
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+
+    cwd = Path.cwd().resolve()
+    for p in (cwd, *cwd.parents):
+        if (p / "pyproject.toml").is_file() and (p / "src" / "xianyu_mcp").is_dir():
+            return p
+
+    return Path(__file__).resolve().parents[2]
+
+
+def _configure_logging(repo_root: Path) -> None:
+    level = os.environ.get("XIANYU_LOG_LEVEL", "INFO").strip().upper() or "INFO"
+    try:
+        logger.remove()
+    except Exception:
+        pass
+
+    logger.add(sys.stderr, level=level, backtrace=False, diagnose=False)
+
+    if not _truthy(os.environ.get("XIANYU_LOG_TO_FILE", "0")):
+        return
+
+    log_file = os.environ.get("XIANYU_LOG_FILE", "").strip()
+    try:
+        if log_file:
+            path = Path(log_file).expanduser()
+            if not path.is_absolute():
+                path = (repo_root / path).resolve()
+        else:
+            path = (repo_root / ".logs" / "xianyu_mcp.log").resolve()
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        logger.add(
+            str(path),
+            level=level,
+            rotation="10 MB",
+            retention="7 days",
+            encoding="utf-8",
+            enqueue=True,
+            backtrace=False,
+            diagnose=False,
+        )
+        logger.info("xianyu_mcp log_file={}", str(path))
+    except Exception as e:
+        logger.warning("xianyu_mcp log_file_failed error={}", type(e).__name__)
+
+
+_REPO_ROOT = _resolve_repo_root()
 load_dotenv(_REPO_ROOT / ".env")
+_configure_logging(_REPO_ROOT)
+logger.info("xianyu_mcp repo_root={}", str(_REPO_ROOT))
 
 
 def _load_cookie_str() -> str:
@@ -74,10 +133,6 @@ def _get_first_run_setup() -> FirstRunSetup:
             load_cookie_str=_load_cookie_str,
         )
     return _first_run_setup
-
-
-def _truthy(value: str) -> bool:
-    return value.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 def _maybe_requires_login_payload() -> dict[str, Any] | None:
@@ -313,6 +368,12 @@ def qr_login_save_env(session_id: str, env_path: str = ".env") -> str:
 
     cookie_str = str(cookie_info.get("cookie") or "")
     if "_m_h5_tk=" not in cookie_str:
+        logger.warning(
+            "qr_login_save_env missing_mtop_token session_id={} env_path={} cookie_len={}",
+            session_id,
+            env_path,
+            len(cookie_str),
+        )
         return dump_json(
             {
                 "success": False,
@@ -325,6 +386,15 @@ def qr_login_save_env(session_id: str, env_path: str = ".env") -> str:
     target = Path(env_path).expanduser()
     if not target.is_absolute():
         target = (_REPO_ROOT / target).resolve()
+
+    logger.info(
+        "qr_login_save_env writing session_id={} env_path={} cookie_len={} has_mtop_token={} has_x5sec={}",
+        session_id,
+        str(target),
+        len(cookie_str),
+        "_m_h5_tk=" in cookie_str and "_m_h5_tk_enc=" in cookie_str,
+        "x5sec=" in cookie_str,
+    )
 
     lines: list[str] = []
     if target.exists():
@@ -343,7 +413,25 @@ def qr_login_save_env(session_id: str, env_path: str = ".env") -> str:
     if not updated:
         out_lines.append(value)
 
-    target.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    try:
+        target.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+    except Exception as e:
+        logger.exception(
+            "qr_login_save_env write_failed session_id={} env_path={} error={}",
+            session_id,
+            str(target),
+            type(e).__name__,
+        )
+        return dump_json(
+            {
+                "success": False,
+                "status": "error",
+                "message": "write_failed",
+                "session_id": session_id,
+                "env_path": str(target),
+                "error": type(e).__name__,
+            }
+        )
     return dump_json(
         {
             "success": True,
@@ -357,8 +445,6 @@ def qr_login_save_env(session_id: str, env_path: str = ".env") -> str:
 
 
 def main() -> None:
-    import sys
-
     transport = "stdio"
     if "--http" in sys.argv:
         transport = "streamable-http"
