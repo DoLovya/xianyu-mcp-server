@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -87,9 +88,11 @@ async def run_face_verification(manager: "QRLoginManager", session_id: str, ifra
                 if manager._has_mtop_token(session):
                     session.status = "success"
                     return
-                task = asyncio.create_task(manager._monitor_mtop_bootstrap(session_id))
-                manager._mtop_tasks.add(task)
-                task.add_done_callback(manager._mtop_tasks.discard)
+                if session.status != "verification_required":
+                    session.status = "verification_required"
+                    session.created_time = time.time()
+                    session.expire_time = 900.0
+                await manager._monitor_mtop_bootstrap(session_id)
             else:
                 session.status = "expired"
     except Exception as e:

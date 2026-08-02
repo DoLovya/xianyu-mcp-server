@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 import os
+import threading
 import time
 import uuid
 from random import random
@@ -40,8 +41,6 @@ def _default_headers() -> dict[str, str]:
 class QRLoginManager:
     def __init__(self) -> None:
         self.sessions: dict[str, QRLoginSession] = {}
-        self._face_tasks: set[asyncio.Task[Any]] = set()
-        self._mtop_tasks: set[asyncio.Task[Any]] = set()
         self.headers = _default_headers()
         self.host = "https://passport.goofish.com"
         self.api_mini_login = f"{self.host}/mini_login.htm"
@@ -202,6 +201,17 @@ class QRLoginManager:
                 self.sessions[session_id].status = "error"
                 self.sessions[session_id].error_message = "mtop cookie 补齐失败"
 
+    def _start_monitor_thread(self, session_id: str) -> None:
+        def runner() -> None:
+            asyncio.run(self._monitor_qr_status(session_id))
+
+        t = threading.Thread(
+            target=runner,
+            name=f"xianyu-qr-login-monitor:{session_id}",
+            daemon=True,
+        )
+        t.start()
+
     async def generate(self) -> dict[str, Any]:
         session_id = str(uuid.uuid4())
         session = QRLoginSession(session_id=session_id)
@@ -213,12 +223,10 @@ class QRLoginManager:
             except ValueError as e:
                 if str(e) != "missing_m_h5_tk":
                     raise
-                logger.warning(
-                    f"qr_login_generate 获取 m_h5_tk 失败，降级继续: {session_id}: {type(e).__name__}"
-                )
+                logger.info("qr_login_generate m_h5_tk preheat failed, degrade session_id={}", session_id)
             await self._get_login_params(session)
             await self._generate_qr(session)
-            asyncio.create_task(self._monitor_qr_status(session_id))
+            self._start_monitor_thread(session_id)
             return {
                 "success": True,
                 **session.to_public_dict(),
@@ -274,7 +282,6 @@ class QRLoginManager:
     async def _get_mh5tk(self, session: QRLoginSession) -> None:
         data = {"bizScene": "home"}
         data_str = json.dumps(data, separators=(",", ":"))
-        t = str(int(time.time() * 1000))
         app_key = "34839810"
 
         async with httpx.AsyncClient(
@@ -282,15 +289,26 @@ class QRLoginManager:
             follow_redirects=True,
             proxy=self.proxy,
         ) as client:
-            resp = await client.get(self.api_h5_tk, headers=self.headers)
-            for k, v in resp.cookies.items():
-                session.cookies[k] = v
+            token = ""
+            for i in range(3):
+                resp = await client.get(self.api_h5_tk, headers=self.headers)
+                for k, v in resp.cookies.items():
+                    session.cookies[k] = v
+                for k, v in client.cookies.items():
+                    session.cookies[k] = v
 
-            mh5 = session.cookies.get("m_h5_tk") or session.cookies.get("_m_h5_tk") or ""
-            token = mh5.split("_")[0] if "_" in mh5 else ""
+                mh5 = session.cookies.get("m_h5_tk") or session.cookies.get("_m_h5_tk") or ""
+                token = mh5.split("_")[0] if "_" in mh5 else ""
+                if token:
+                    break
+                if i < 2:
+                    await asyncio.sleep(0.3 * (i + 1))
+
             if not token:
+                logger.debug("qr_login_generate m_h5_tk preheat missing after retries")
                 raise ValueError("missing_m_h5_tk")
 
+            t = str(int(time.time() * 1000))
             sign_input = f"{token}&{t}&{app_key}&{data_str}"
             sign = hashlib.md5(sign_input.encode()).hexdigest()
             params = {
@@ -305,12 +323,16 @@ class QRLoginManager:
                 "api": "mtop.gaia.nodejs.gaia.idle.data.gw.v2.index.get",
                 "data": data_str,
             }
-            await client.post(
+            resp2 = await client.post(
                 self.api_h5_tk,
                 params=params,
                 headers=self.headers,
                 cookies=session.cookies,
             )
+            for k, v in resp2.cookies.items():
+                session.cookies[k] = v
+            for k, v in client.cookies.items():
+                session.cookies[k] = v
 
     async def _get_login_params(self, session: QRLoginSession) -> None:
         params = {
@@ -401,9 +423,7 @@ class QRLoginManager:
                         session.created_time = time.time()
                         session.expire_time = 900.0
                         iframe_url = session.verification_url or ""
-                        task = asyncio.create_task(run_face_verification(self, session_id, iframe_url))
-                        self._face_tasks.add(task)
-                        task.add_done_callback(self._face_tasks.discard)
+                        await run_face_verification(self, session_id, iframe_url)
                         return
 
                     for k, v in resp.cookies.items():
@@ -414,9 +434,11 @@ class QRLoginManager:
                     if self._has_mtop_token(session):
                         session.status = "success"
                         return
-                    task = asyncio.create_task(self._monitor_mtop_bootstrap(session_id))
-                    self._mtop_tasks.add(task)
-                    task.add_done_callback(self._mtop_tasks.discard)
+                    if session.status != "verification_required":
+                        session.status = "verification_required"
+                        session.created_time = time.time()
+                        session.expire_time = 900.0
+                    await self._monitor_mtop_bootstrap(session_id)
                     return
 
                 if qr_status in {"SCANED", "SCANNED"} and session.status == "waiting":
