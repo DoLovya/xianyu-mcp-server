@@ -47,6 +47,7 @@ def _load_xianyu_modules() -> dict[str, Any]:
         "AuthApi": apis.AuthApi,
         "ItemApi": apis.ItemApi,
         "MediaApi": apis.MediaApi,
+        "SearchApi": getattr(apis, "SearchApi", None),
         "XianyuLive": goofish_live.XianyuLive,
         "make_text": message.make_text,
         "make_image": message.make_image,
@@ -85,6 +86,7 @@ class XianYuApiTools:
         self._auth_api = None
         self._item_api = None
         self._media_api = None
+        self._search_api = None
         self._live = None
         self._guardrails = RequestGuardrails()
 
@@ -162,6 +164,8 @@ class XianYuApiTools:
             self._auth_api = modules["AuthApi"](self._client)
             self._item_api = modules["ItemApi"](self._client)
             self._media_api = modules["MediaApi"](self._client)
+            if modules.get("SearchApi"):
+                self._search_api = modules["SearchApi"](self._client)
 
     def _get_auth_api(self):
         self._ensure_rest_apis()
@@ -174,6 +178,12 @@ class XianYuApiTools:
     def _get_media_api(self):
         self._ensure_rest_apis()
         return self._media_api
+
+    def _get_search_api(self):
+        self._ensure_rest_apis()
+        if self._search_api is None:
+            raise RuntimeError("SearchApi 未加载，请确认 third_party/pyxianyu 已更新。")
+        return self._search_api
 
     def _get_live(self):
         self._require_cookie()
@@ -206,6 +216,96 @@ class XianYuApiTools:
     def get_item_detail(self, item_id: str) -> str:
         result = self._guardrails.run_read(lambda: self._get_item_api().get_item_info(item_id))
         return _dump(result)
+
+    @staticmethod
+    def _normalize_search_price(price: Any) -> str:
+        if isinstance(price, str):
+            return price
+        if isinstance(price, (int, float)):
+            return str(price)
+        if isinstance(price, list):
+            texts: list[str] = []
+            for part in price:
+                if isinstance(part, dict) and "text" in part:
+                    texts.append(str(part.get("text") or ""))
+            return "".join(texts).strip()
+        return ""
+
+    @staticmethod
+    def _get_nested(data: Any, *keys: str) -> Any:
+        cur = data
+        for key in keys:
+            if not isinstance(cur, dict):
+                return None
+            cur = cur.get(key)
+        return cur
+
+    def search_items(
+        self,
+        keyword: str,
+        *,
+        page_number: int = 1,
+        rows_per_page: int = 20,
+        sort_field: str = "",
+        sort_value: str = "",
+        prop_value_str: dict[str, Any] | None = None,
+        extra_filter_value: str = "{}",
+        from_filter: bool = False,
+    ) -> str:
+        normalized_keyword = str(keyword).strip()
+        if not normalized_keyword:
+            raise ValueError("keyword 不能为空。")
+
+        normalized_page_number = max(int(page_number), 1)
+        normalized_rows_per_page = min(max(int(rows_per_page), 1), 50)
+        normalized_sort_field = str(sort_field or "").strip()
+        normalized_sort_value = str(sort_value or "").strip()
+
+        result = self._guardrails.run_read(
+            lambda: self._get_search_api().search_items(
+                normalized_keyword,
+                page_number=normalized_page_number,
+                rows_per_page=normalized_rows_per_page,
+                sort_field=normalized_sort_field,
+                sort_value=normalized_sort_value,
+                prop_value_str=prop_value_str,
+                extra_filter_value=extra_filter_value,
+                from_filter=from_filter,
+            )
+        )
+
+        data = result.get("data", {}) or {}
+        result_list = data.get("resultList") or []
+        items: list[dict[str, Any]] = []
+        for entry in result_list:
+            ex_content = self._get_nested(entry, "data", "item", "main", "exContent") or {}
+            if not isinstance(ex_content, dict):
+                continue
+            items.append(
+                {
+                    "item_id": ex_content.get("itemId") or "",
+                    "title": ex_content.get("title") or "",
+                    "price": self._normalize_search_price(ex_content.get("price")),
+                    "pic_url": ex_content.get("picUrl") or "",
+                    "area": ex_content.get("area") or "",
+                    "user_nick_name": ex_content.get("userNickName") or "",
+                }
+            )
+
+        result_info = data.get("resultInfo", {}) or {}
+        return _dump(
+            {
+                "success": True,
+                "api": result.get("api"),
+                "keyword": normalized_keyword,
+                "page_number": normalized_page_number,
+                "rows_per_page": normalized_rows_per_page,
+                "count": len(items),
+                "has_next_page": bool(result_info.get("hasNextPage")),
+                "items": items,
+                "raw": result,
+            }
+        )
 
     def get_item_edit_detail(self, item_id: str) -> str:
         normalized_item_id = str(item_id).strip()

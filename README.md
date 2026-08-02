@@ -88,6 +88,7 @@ xianyu-mcp-server/
 | --- | --- |
 | `validate_login` | 校验当前 Cookie 是否有效，并尝试换取 `accessToken` |
 | `refresh_login` | 刷新当前登录态 |
+| `search_items` | 按关键词搜索闲鱼商品（支持分页与排序） |
 | `get_item_detail` | 获取指定商品详情 |
 | `get_item_edit_detail` | 获取指定商品在 PC 编辑页的编辑详情 |
 | `list_my_items` | 拉取当前账号名下全部商品列表，并自动翻页聚合 |

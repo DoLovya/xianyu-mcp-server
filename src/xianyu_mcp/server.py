@@ -99,7 +99,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、商品搜索、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "大部分工具调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE；如无 Cookie，可先使用 qr_login_* 工具扫码获取。"
     ),
 )
@@ -176,6 +176,35 @@ def get_item_detail(item_id: str) -> str:
     if payload:
         return dump_json(payload)
     return _get_tools().get_item_detail(item_id=item_id)
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def search_items(
+    keyword: str,
+    page_number: int = 1,
+    rows_per_page: int = 20,
+    sort_field: str = "",
+    sort_value: str = "",
+) -> str:
+    """按关键词搜索闲鱼商品（PC Web 搜索接口）。
+
+    Args:
+        keyword: 搜索关键词。
+        page_number: 页码，从 1 开始。
+        rows_per_page: 单页条数，默认 20，当前会限制在 1 到 50 之间。
+        sort_field: 排序字段，例如 create。
+        sort_value: 排序值，例如 desc。
+    """
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
+    return _get_tools().search_items(
+        keyword=keyword,
+        page_number=page_number,
+        rows_per_page=rows_per_page,
+        sort_field=sort_field,
+        sort_value=sort_value,
+    )
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
