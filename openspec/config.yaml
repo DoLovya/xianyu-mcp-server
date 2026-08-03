@@ -1,5 +1,10 @@
 schema: spec-driven
 
+rules:
+  tasks:
+    - Tasks 必须使用 Markdown checkbox：- [ ] / - [x]
+    - 一级任务必须可验收；必要时拆分为可勾选的子任务
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.
