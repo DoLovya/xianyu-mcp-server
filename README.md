@@ -88,6 +88,7 @@ xianyu-mcp-server/
 | --- | --- |
 | `validate_login` | 校验当前 Cookie 是否有效，并尝试换取 `accessToken` |
 | `refresh_login` | 刷新当前登录态 |
+| `get_my_profile` | 获取当前登录用户个人信息（个人页导航数据） |
 | `search_items` | 按关键词搜索闲鱼商品（支持分页与排序） |
 | `get_item_detail` | 获取指定商品详情 |
 | `get_item_edit_detail` | 获取指定商品在 PC 编辑页的编辑详情 |
@@ -105,6 +106,10 @@ xianyu-mcp-server/
 | `qr_login_status` | 查询扫码登录会话状态（含人脸验证二维码 data-url） |
 | `qr_login_cookie` | 在扫码登录成功后获取完整 Cookie（已尽量补齐 `_m_h5_tk` 等关键字段） |
 | `qr_login_save_env` | 显式将 `qr_login_cookie` 的结果写入 `.env`（无需手动复制） |
+
+### 用户信息相关用法
+
+- 获取当前账号的个人信息（昵称/头像/地区等以接口返回为准）：调用 `get_my_profile`，结果同时包含结构化 `profile` 与原始响应 `raw`（便于你自定义字段映射）。
 
 ### 多媒体相关用法
 

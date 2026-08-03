@@ -99,7 +99,7 @@ mcp = FastMCP(
     "XianYu APIs",
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
-        "当前支持登录态校验、token 刷新、商品搜索、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
+        "当前支持登录态校验、token 刷新、个人信息查询、商品搜索、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
         "大部分工具调用前请先在 .env 中配置 XIANYU_COOKIE 或 XIANYU_COOKIE_FILE；如无 Cookie，可先使用 qr_login_* 工具扫码获取。"
     ),
 )
@@ -163,6 +163,15 @@ def refresh_login() -> str:
     if payload:
         return dump_json(payload)
     return _get_tools().refresh_login()
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+def get_my_profile() -> str:
+    """获取当前登录用户的个人信息（个人页导航数据）。"""
+    payload = _maybe_requires_login_payload()
+    if payload:
+        return dump_json(payload)
+    return _get_tools().get_my_profile()
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))

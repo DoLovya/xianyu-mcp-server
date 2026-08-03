@@ -48,6 +48,7 @@ def _load_xianyu_modules() -> dict[str, Any]:
         "ItemApi": apis.ItemApi,
         "MediaApi": apis.MediaApi,
         "SearchApi": getattr(apis, "SearchApi", None),
+        "UserApi": getattr(apis, "UserApi", None),
         "XianyuLive": goofish_live.XianyuLive,
         "make_text": message.make_text,
         "make_image": message.make_image,
@@ -87,6 +88,7 @@ class XianYuApiTools:
         self._item_api = None
         self._media_api = None
         self._search_api = None
+        self._user_api = None
         self._live = None
         self._guardrails = RequestGuardrails()
 
@@ -166,6 +168,8 @@ class XianYuApiTools:
             self._media_api = modules["MediaApi"](self._client)
             if modules.get("SearchApi"):
                 self._search_api = modules["SearchApi"](self._client)
+            if modules.get("UserApi"):
+                self._user_api = modules["UserApi"](self._client)
 
     def _get_auth_api(self):
         self._ensure_rest_apis()
@@ -184,6 +188,77 @@ class XianYuApiTools:
         if self._search_api is None:
             raise RuntimeError("SearchApi 未加载，请确认 third_party/pyxianyu 已更新。")
         return self._search_api
+
+    def _get_user_api(self):
+        self._ensure_rest_apis()
+        if self._user_api is None:
+            raise RuntimeError("UserApi 未加载，请确认 third_party/pyxianyu 已更新。")
+        return self._user_api
+
+    @staticmethod
+    def _first_present(data: dict[str, Any], *keys: str) -> Any:
+        for key in keys:
+            if key in data and data[key] not in (None, ""):
+                return data[key]
+        return None
+
+    def get_my_profile(self) -> str:
+        result = self._guardrails.run_read(lambda: self._get_user_api().get_user_page_nav())
+        data = result.get("data") if isinstance(result, dict) else None
+        if not isinstance(data, dict):
+            data = {}
+
+        user = {}
+        for key in ("user", "userInfo", "userinfo", "profile", "seller"):
+            v = data.get(key)
+            if isinstance(v, dict) and v:
+                user = v
+                break
+
+        user_id = (
+            self._get_nested(data, "userId")
+            or self._get_nested(user, "userId")
+            or self._get_nested(user, "id")
+        )
+        nick = self._first_present(
+            user,
+            "nick",
+            "nickname",
+            "userNick",
+            "userNickName",
+            "displayName",
+        )
+        avatar_url = self._first_present(
+            user,
+            "avatar",
+            "avatarUrl",
+            "avatar_url",
+            "headPic",
+            "headPicUrl",
+            "head_img",
+        )
+        location = self._first_present(
+            user,
+            "location",
+            "city",
+            "cityName",
+            "province",
+            "area",
+            "areaName",
+        )
+        seller_level = self._first_present(user, "level", "sellerLevel", "seller_level")
+        seller_score = self._first_present(user, "score", "sellerScore", "seller_score", "creditScore")
+
+        profile = {
+            "user_id": user_id,
+            "nick": nick,
+            "avatar_url": avatar_url,
+            "location": location,
+            "seller_level": seller_level,
+            "seller_score": seller_score,
+        }
+
+        return _dump({"success": True, "profile": profile, "raw": result})
 
     def _get_live(self):
         self._require_cookie()

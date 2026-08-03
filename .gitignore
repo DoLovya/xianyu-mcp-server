@@ -29,3 +29,6 @@ scripts/
 /*.egg-info/
 /.mypy_cache/
 /.ruff_cache/
+
+# 宣传材料（CSDN 文章等，不属于项目源码）
+/xianyu-csdn-article/
