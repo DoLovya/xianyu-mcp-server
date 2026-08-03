@@ -30,6 +30,8 @@ jobs:
       UV_EXTRA_INDEX_URL: ${{ vars.UV_EXTRA_INDEX_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
@@ -50,6 +52,8 @@ jobs:
       UV_EXTRA_INDEX_URL: ${{ vars.UV_EXTRA_INDEX_URL }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
