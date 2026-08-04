@@ -96,7 +96,7 @@ def _load_cookie_str() -> str:
 
 
 mcp = FastMCP(
-    "XianYu APIs",
+    "xianyu-mcp-server",
     instructions=(
         "基于 pyxianyu 的闲鱼 MCP 服务。"
         "当前支持登录态校验、token 刷新、个人信息查询、商品搜索、商品详情查询、商品编辑详情查询、商品编辑、我的商品列表查询、商品下架、商品重新上架、发布实体商品、媒体上传、会话列表查询、主动发文本消息、主动发图片消息、会话历史查询。"
