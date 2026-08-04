@@ -44,11 +44,11 @@ jobs:
           uv pip install third_party/pyxianyu
           uv pip install -e .
       - name: Run tests
-        run: uv run python -m unittest discover -s tests -p 'test_*.py'
+        run: .venv/bin/python -m unittest discover -s tests -p 'test_*.py'
       - name: Install-mode import (no submodule)
         run: |
           rm -rf third_party/pyxianyu
-          uv run python -c "import xianyu_mcp; from xianyu_mcp.tools.xianyu_api_tools import _load_xianyu_modules; _load_xianyu_modules(); print('ok')"
+          .venv/bin/python -c "import xianyu_mcp; from xianyu_mcp.tools.xianyu_api_tools import _load_xianyu_modules; _load_xianyu_modules(); print('ok')"
 
   build:
     name: Build (Python 3.11)
@@ -75,7 +75,7 @@ jobs:
       - name: Build wheel and sdist
         run: |
           uv pip install build
-          uv run python -m build
+          .venv/bin/python -m build
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
