@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green)](./LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue)](./pyproject.toml)
 
-基于 `third_party/pyxianyu` 封装的闲鱼 MCP 项目，用于把闲鱼商品、会话、消息发送等能力接入支持 MCP 的客户端。
+基于 `pyxianyu` 封装的闲鱼 MCP 项目，用于把闲鱼商品、会话、消息发送等能力接入支持 MCP 的客户端。
 
 > **风险提示**：本项目仅供学习与技术研究使用。通过自动化手段操作闲鱼账号存在被平台风控、限制功能甚至封号的风险，使用者需自行承担一切后果。详见[免责声明](#免责声明)。
 
@@ -36,7 +36,7 @@
 
 仓库分两层：
 
-- `third_party/pyxianyu`：闲鱼底层 HTTP / WebSocket 能力（git submodule）
+- `pyxianyu`：闲鱼底层 HTTP / WebSocket 能力（推荐通过 PyPI 安装；仓库内 submodule 仅用于开发调试）
 - `src/xianyu_mcp/`：面向 MCP 的工具封装
 
 适合的使用场景：
@@ -57,7 +57,7 @@ xianyu-mcp-server/
 │           ├── __init__.py
 │           └── xianyu_api_tools.py # 底层能力封装
 ├── third_party/
-│   └── pyxianyu/                  # 闲鱼底层 HTTP/WebSocket 能力（git submodule）
+│   └── pyxianyu/                  # 可选：pyxianyu 源码（git submodule，仅开发调试）
 │       ├── apis/                  # auth_api, item_api, media_api
 │       ├── core/                  # client, exceptions
 │       ├── docs/                  # 接口分析文档
@@ -160,13 +160,29 @@ pipx install uv
 
 ## 快速开始
 
-### 1. 拉取子模块
+### 1. uvx 一键启动（推荐，无需 clone）
+
+默认使用 `stdio`：
+
+```bash
+uvx xianyu-mcp
+```
+
+如需 HTTP 模式：
+
+```bash
+uvx xianyu-mcp --http
+```
+
+HTTP 模式默认监听：`http://localhost:8000/mcp`
+
+### 2. （可选）源码开发：拉取子模块
 
 ```bash
 git submodule update --init --recursive
 ```
 
-### 2. 准备环境变量
+### 3. 准备环境变量
 
 ```bash
 cp .env.example .env
@@ -205,24 +221,25 @@ XIANYU_SETUP_AUTO_OPEN=1      # 0 表示不自动打开浏览器/验证链接
 XIANYU_SETUP_AUTO_WRITE_ENV=1 # 0 表示不自动写入 .env，需要你手动调用 qr_login_save_env
 ```
 
-### 3. 安装依赖
+### 4. 安装依赖（源码开发）
 
 ```bash
-uv sync
+uv pip install -e third_party/pyxianyu
+uv pip install -e .
 ```
 
-### 4. 本地启动 MCP
+### 5. 本地启动 MCP（源码开发）
 
 默认使用 `stdio`：
 
 ```bash
-uv run xianyu-mcp
+python -m xianyu_mcp.server
 ```
 
 如需 HTTP 模式：
 
 ```bash
-uv run xianyu-mcp --http
+python -m xianyu_mcp.server --http
 ```
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
@@ -231,16 +248,16 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
 
 本项目基于标准 MCP 协议，支持任何兼容 MCP 的客户端。除 Cherry Studio 外均使用 `stdio` 传输模式。
 
-> 前置条件：已完成「快速开始」的 1-4 步，本地能通过 `uv run xianyu-mcp` 启动 MCP 服务。
+> 前置条件：能在本机直接运行 `xianyu-mcp`（推荐 `uvx xianyu-mcp`）。
 
-通用配置（以 Trae 为例）：
+通用配置（以 Trae 为例，推荐使用 `uvx`）：
 
 ```json
 {
   "mcpServers": {
     "xianyu-mcp-server": {
-      "command": "uv",
-      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"],
+      "command": "uvx",
+      "args": ["xianyu-mcp"],
       "env": {
         "XIANYU_COOKIE": "",
         "XIANYU_COOKIE_FILE": ""
@@ -252,6 +269,15 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
 
 Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU_COOKIE_FILE` 指向一个被 `.gitignore` 忽略的文件路径（例如 `artifacts/xianyu_cookie.txt`），避免把 Cookie 写进配置文件并误提交到仓库。
 
+源码开发模式（可选）：如果你希望直接用工作区代码运行，可把 `command/args` 换成：
+
+```json
+{
+  "command": "uv",
+  "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"]
+}
+```
+
 注意：如果你的 Trae 版本不允许自动修改 `.trae/mcp.json`，请手动把上面 `env` 片段补到你的 `.trae/mcp.json` 对应 server 配置里，然后重载工作区即可看到输入框。
 
 各客户端差异：
@@ -262,10 +288,10 @@ Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径 | 保存后重启 |
 | Cursor | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局） | 项目级支持 | 全局配置需绝对路径 |
 | VS Code | `.vscode/mcp.json` | 是 | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+ |
-| Cherry Studio | UI 配置，无配置文件 | N/A | 设置 → MCP 服务器 → 添加，类型选 STDIO，参数填 `--directory <绝对路径> run xianyu-mcp` |
+| Cherry Studio | UI 配置，无配置文件 | N/A | 设置 → MCP 服务器 → 添加，类型选 STDIO，参数填 `xianyu-mcp` |
 
 - `xianyu-mcp-server` 只是 MCP 服务名，可以自定义
-- `command` 既可以使用 `uv`（依赖 PATH），也可以使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
+- `command` 既可以使用 `uvx`（推荐），也可以使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uvx`
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
 
 HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。

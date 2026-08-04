@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import importlib
 import inspect
 import json
-import os
 import sys
 import tempfile
 import time
@@ -27,20 +25,19 @@ def _load_xianyu_modules() -> dict[str, Any]:
     if _IMPORT_CACHE is not None:
         return _IMPORT_CACHE
 
-    if not _XIANYU_APIS_ROOT.exists():
-        raise FileNotFoundError(f"未找到 pyxianyu 子仓库: {_XIANYU_APIS_ROOT}")
-
-    sys.path.insert(0, str(_XIANYU_APIS_ROOT))
-    old_cwd = os.getcwd()
-    os.chdir(_XIANYU_APIS_ROOT)
     try:
-        apis = importlib.import_module("apis")
-        core = importlib.import_module("core")
-        goofish_live = importlib.import_module("goofish_live")
-        message = importlib.import_module("message")
-        goofish_utils = importlib.import_module("utils.goofish_utils")
-    finally:
-        os.chdir(old_cwd)
+        from pyxianyu import apis, core, goofish_live, message
+        from pyxianyu.utils import goofish_utils
+    except ModuleNotFoundError as exc:
+        dev_src = _XIANYU_APIS_ROOT / "src"
+        if dev_src.exists():
+            sys.path.insert(0, str(dev_src))
+            from pyxianyu import apis, core, goofish_live, message
+            from pyxianyu.utils import goofish_utils
+        else:
+            raise RuntimeError(
+                "未安装 pyxianyu。请先安装 `pyxianyu`（推荐从 PyPI 安装），或在源码开发时初始化 submodule。"
+            ) from exc
 
     _IMPORT_CACHE = {
         "XianyuClient": core.XianyuClient,
