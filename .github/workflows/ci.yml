@@ -41,8 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install --no-editable third_party/pyxianyu
-          uv pip install -e .
+          uv pip install -e . --no-editable-package pyxianyu
       - name: Run tests
         run: .venv/bin/python -m unittest discover -s tests -p 'test_*.py'
       - name: Install-mode import (no submodule)
@@ -70,8 +69,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install --no-editable third_party/pyxianyu
-          uv pip install -e .
+          uv pip install -e . --no-editable-package pyxianyu
       - name: Build wheel and sdist
         run: |
           uv pip install build
