@@ -84,28 +84,28 @@ xianyu-mcp-server/
 
 当前 MCP 已开放这些工具：
 
-| 工具名 | 说明 |
-| --- | --- |
-| `validate_login` | 校验当前 Cookie 是否有效，并尝试换取 `accessToken` |
-| `refresh_login` | 刷新当前登录态 |
-| `get_my_profile` | 获取当前登录用户个人信息（个人页导航数据） |
-| `search_items` | 按关键词搜索闲鱼商品（支持分页与排序） |
-| `get_item_detail` | 获取指定商品详情 |
-| `get_item_edit_detail` | 获取指定商品在 PC 编辑页的编辑详情 |
-| `list_my_items` | 拉取当前账号名下全部商品列表，并自动翻页聚合 |
-| `downshelf_item` | 下架当前账号名下指定商品 |
-| `reshelf_item` | 通过 PC 编辑重发布链路重新上架指定商品 |
-| `edit_item` | 编辑指定商品信息（仅支持 PC 可编辑的实体商品） |
-| `publish_physical_item` | 在闲鱼 PC 端发布全新实体商品，支持自动上传图片 |
-| `upload_media` | 上传本地文件或 URL 素材，返回可复用的媒体 URL |
-| `list_conversations` | 拉取最近会话列表 |
-| `list_conversation_messages` | 拉取指定会话历史消息 |
-| `send_text_message` | 主动发送文本消息 |
-| `send_image_message` | 主动发送图片消息 |
-| `qr_login_generate` | 生成扫码登录二维码（返回 session_id 与 base64 data-url） |
-| `qr_login_status` | 查询扫码登录会话状态（含人脸验证二维码 data-url） |
-| `qr_login_cookie` | 在扫码登录成功后获取完整 Cookie（已尽量补齐 `_m_h5_tk` 等关键字段） |
-| `qr_login_save_env` | 显式将 `qr_login_cookie` 的结果写入 `.env`（无需手动复制） |
+| 工具名                       | 说明                                                                |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `validate_login`             | 校验当前 Cookie 是否有效，并尝试换取 `accessToken`                  |
+| `refresh_login`              | 刷新当前登录态                                                      |
+| `get_my_profile`             | 获取当前登录用户个人信息（个人页导航数据）                          |
+| `search_items`               | 按关键词搜索闲鱼商品（支持分页与排序）                              |
+| `get_item_detail`            | 获取指定商品详情                                                    |
+| `get_item_edit_detail`       | 获取指定商品在 PC 编辑页的编辑详情                                  |
+| `list_my_items`              | 拉取当前账号名下全部商品列表，并自动翻页聚合                        |
+| `downshelf_item`             | 下架当前账号名下指定商品                                            |
+| `reshelf_item`               | 通过 PC 编辑重发布链路重新上架指定商品                              |
+| `edit_item`                  | 编辑指定商品信息（仅支持 PC 可编辑的实体商品）                      |
+| `publish_physical_item`      | 在闲鱼 PC 端发布全新实体商品，支持自动上传图片                      |
+| `upload_media`               | 上传本地文件或 URL 素材，返回可复用的媒体 URL                       |
+| `list_conversations`         | 拉取最近会话列表                                                    |
+| `list_conversation_messages` | 拉取指定会话历史消息                                                |
+| `send_text_message`          | 主动发送文本消息                                                    |
+| `send_image_message`         | 主动发送图片消息                                                    |
+| `qr_login_generate`          | 生成扫码登录二维码（返回 session_id 与 base64 data-url）            |
+| `qr_login_status`            | 查询扫码登录会话状态（含人脸验证二维码 data-url）                   |
+| `qr_login_cookie`            | 在扫码登录成功后获取完整 Cookie（已尽量补齐 `_m_h5_tk` 等关键字段） |
+| `qr_login_save_env`          | 显式将 `qr_login_cookie` 的结果写入 `.env`（无需手动复制）          |
 
 ### 用户信息相关用法
 
@@ -147,42 +147,48 @@ MCP 层已从中封装出 `get_item_edit_detail`、`reshelf_item`、`edit_item`�
 ## 环境要求
 
 - Python 3.11+
-- `uv`
+- `uv`（或使用 `pip` 替代，见常见问题）
 - 闲鱼登录后的完整 Cookie（可手动抓取，或先启动 MCP 后使用 `qr_login_*` 工具扫码获取）
 
-`uv` 安装方式（任选其一）：
+`uv` 安装方式：
+
+**Windows（PowerShell，推荐）**：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+安装完成后**关闭并重新打开终端**（或刷新 PATH），然后验证：
+
+```powershell
+uv --version
+```
+
+**macOS / Linux**：
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# 或
+```
+
+**跨平台通用（不推荐，可能与系统 Python 冲突）**：
+
+```bash
 pipx install uv
+# 或
+pip install --user uv
 ```
 
 ## 快速开始
 
-### 1. uvx 一键启动（推荐，无需 clone）
-
-默认使用 `stdio`：
+### 1. 克隆仓库并拉取子模块
 
 ```bash
-uvx xianyu-mcp
-```
-
-如需 HTTP 模式：
-
-```bash
-uvx xianyu-mcp --http
-```
-
-HTTP 模式默认监听：`http://localhost:8000/mcp`
-
-### 2. （可选）源码开发：拉取子模块
-
-```bash
+git clone https://github.com/DoLovya/xianyu-mcp-server.git
+cd xianyu-mcp-server
 git submodule update --init --recursive
 ```
 
-### 3. 准备环境变量
+### 2. 准备环境变量
 
 ```bash
 cp .env.example .env
@@ -221,43 +227,62 @@ XIANYU_SETUP_AUTO_OPEN=1      # 0 表示不自动打开浏览器/验证链接
 XIANYU_SETUP_AUTO_WRITE_ENV=1 # 0 表示不自动写入 .env，需要你手动调用 qr_login_save_env
 ```
 
-### 4. 安装依赖（源码开发）
+### 3. 安装依赖
+
+**使用 uv（推荐）**：
 
 ```bash
 uv pip install -e third_party/pyxianyu
 uv pip install -e .
 ```
 
-### 5. 本地启动 MCP（源码开发）
+**使用 pip（替代方案，适合装不上 uv 的场景）**：
+
+```bash
+pip install -e third_party/pyxianyu
+pip install -e .
+```
+
+### 4. 本地启动 MCP
 
 默认使用 `stdio`：
 
 ```bash
+# 推荐（需要 uv）
+uv run xianyu-mcp
+
+# 或使用 pip 方案：
 python -m xianyu_mcp.server
 ```
 
 如需 HTTP 模式：
 
 ```bash
+# 推荐（需要 uv）
+uv run xianyu-mcp --http
+
+# 或使用 pip 方案：
 python -m xianyu_mcp.server --http
 ```
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
 
+> **⚠️ 重要提示**：本项目未发布到 PyPI，请勿使用 `uvx xianyu-mcp`，否则会安装到同名的第三方包并导致错误（如 `AttributeError: 'Server' object has no attribute 'list_tools'`）。必须先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行。
+
 ## 客户端接入
 
 本项目基于标准 MCP 协议，支持任何兼容 MCP 的客户端。除 Cherry Studio 外均使用 `stdio` 传输模式。
 
-> 前置条件：能在本机直接运行 `xianyu-mcp`（推荐 `uvx xianyu-mcp`）。
+> 前置条件：已 clone 仓库并完成依赖安装（见[快速开始](#快速开始)）。
 
-通用配置（以 Trae 为例，推荐使用 `uvx`）：
+Trae 项目级配置（推荐，已内置在仓库 `.trae/mcp.json`）：
 
 ```json
 {
   "mcpServers": {
     "xianyu-mcp-server": {
-      "command": "uvx",
-      "args": ["xianyu-mcp"],
+      "command": "uv",
+      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"],
       "env": {
         "XIANYU_COOKIE": "",
         "XIANYU_COOKIE_FILE": ""
@@ -269,12 +294,51 @@ HTTP 模式默认监听：`http://localhost:8000/mcp`
 
 Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU_COOKIE_FILE` 指向一个被 `.gitignore` 忽略的文件路径（例如 `artifacts/xianyu_cookie.txt`），避免把 Cookie 写进配置文件并误提交到仓库。
 
-源码开发模式（可选）：如果你希望直接用工作区代码运行，可把 `command/args` 换成：
+不支持 `${workspaceFolder}` 的客户端（如 Claude Desktop 全局配置），请使用绝对路径：
 
 ```json
 {
-  "command": "uv",
-  "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"]
+  "mcpServers": {
+    "xianyu-mcp-server": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\<user>\\Code\\xianyu-mcp-server",
+        "run",
+        "xianyu-mcp"
+      ],
+      "env": {
+        "XIANYU_COOKIE_FILE": "C:\\Users\\<user>\\Code\\xianyu-mcp-server\\artifacts\\xianyu_cookie.txt"
+      }
+    }
+  }
+}
+```
+
+**装不上 uv 的替代方案（使用 python）**：
+
+```json
+{
+  "mcpServers": {
+    "xianyu-mcp-server": {
+      "command": "python",
+      "args": ["-m", "xianyu_mcp.server"],
+      "cwd": "C:\\Users\\<user>\\Code\\xianyu-mcp-server",
+      "env": {
+        "XIANYU_COOKIE_FILE": "C:\\Users\\<user>\\Code\\xianyu-mcp-server\\artifacts\\xianyu_cookie.txt"
+      }
+    }
+  }
+}
+```
+
+Trae 项目级配置也可用 `cwd` 写法（推荐 `cwd` + `${workspaceFolder}` 代替 python args 里的长路径）：
+
+```json
+{
+  "command": "python",
+  "args": ["-m", "xianyu_mcp.server"],
+  "cwd": "${workspaceFolder}"
 }
 ```
 
@@ -282,19 +346,21 @@ Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU
 
 各客户端差异：
 
-| 客户端 | 配置文件路径 | 支持 `${workspaceFolder}` | 备注 |
-|--------|-------------|--------------------------|------|
-| Trae | `.trae/mcp.json` | 是 | 配置后重载工作区 |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径 | 保存后重启 |
-| Cursor | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局） | 项目级支持 | 全局配置需绝对路径 |
-| VS Code | `.vscode/mcp.json` | 是 | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+ |
-| Cherry Studio | UI 配置，无配置文件 | N/A | 设置 → MCP 服务器 → 添加，类型选 STDIO，参数填 `xianyu-mcp` |
+| 客户端         | 配置文件路径                                                               | 支持 `${workspaceFolder}` | 备注                                                                                                                                                                                                                                                 |
+| -------------- | -------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trae           | `.trae/mcp.json`                                                           | 是                        | 配置后重载工作区                                                                                                                                                                                                                                     |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径            | 保存后重启                                                                                                                                                                                                                                           |
+| Cursor         | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局）                | 项目级支持                | 全局配置需绝对路径                                                                                                                                                                                                                                   |
+| VS Code        | `.vscode/mcp.json`                                                         | 是                        | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+                                                                                                                                                              |
+| Cherry Studio  | UI 配置，无配置文件                                                        | N/A                       | 设置 → MCP 服务器 → 添加，类型选 STDIO，`command` 填 `uv`，`args` 填 `--directory C:\Users\<user>\Code\xianyu-mcp-server run xianyu-mcp`；装不上 uv 时 `command` 填 `python`，`args` 填 `-m xianyu_mcp.server`，**Working directory** 填仓库绝对路径 |
 
 - `xianyu-mcp-server` 只是 MCP 服务名，可以自定义
-- `command` 既可以使用 `uvx`（推荐），也可以使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uvx`
+- `command` 优先使用 `uv`，可使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
+- 装不上 uv 时，`command` 用 `python` + `args: ["-m", "xianyu_mcp.server"]`，并把 `cwd`（或 Working directory）设置为仓库绝对路径
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
+- **不要使用 `uvx xianyu-mcp`**：本项目未发布到 PyPI，`uvx` 会安装到同名的第三方包并报错
 
-HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
+HTTP 模式（可选）：以 `uv run xianyu-mcp --http`（或 `python -m xianyu_mcp.server --http`）启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
 
 ## 推荐验证流程
 
@@ -310,7 +376,79 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 
 ## 常见问题
 
-### 1. Trae 检测不到闲鱼 MCP
+### 1. 使用 `uvx xianyu-mcp` 报 `AttributeError: 'Server' object has no attribute 'list_tools'`
+
+这是因为本项目**未发布到 PyPI**，`uvx xianyu-mcp` 会从 PyPI 安装一个同名的第三方包，而不是本项目。
+
+**解决方法**：必须先 clone 仓库，再使用 `uv run` 方式运行：
+
+```bash
+git clone https://github.com/DoLovya/xianyu-mcp-server.git
+cd xianyu-mcp-server
+git submodule update --init --recursive
+uv pip install -e third_party/pyxianyu
+uv pip install -e .
+uv run xianyu-mcp
+```
+
+客户端配置中，`command` 使用 `uv`，`args` 使用 `--directory <仓库绝对路径> run xianyu-mcp`，不要使用 `uvx`。
+
+### 2. Windows 报 `'uv' 不是内部或外部命令，也不是可运行的程序或批处理文件`
+
+这是因为你的 Windows 系统**没有安装 uv**，或者安装后没有刷新 PATH 环境变量。
+
+**解决方法 A（推荐，安装 uv）**：
+
+1. 在 PowerShell 中执行安装命令：
+   ```powershell
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+2. **关闭并重新打开** PowerShell / 终端窗口（这一步很关键，旧终端不会自动加载新 PATH）
+3. 验证是否安装成功：
+   ```powershell
+   uv --version
+   ```
+4. 回到仓库目录，按 README 的步骤重新执行 `uv pip install -e ...` 和 `uv run xianyu-mcp`。
+
+> 小提示：如果 Trae / Cherry Studio 等客户端已经打开，安装 uv 后最好也重启一下客户端，让它重新读取系统 PATH。
+
+**解决方法 B（不想装 uv，用 pip 替代）**：
+
+如果你不想安装 uv，可以直接用 Python 自带的 pip：
+
+```powershell
+# 在仓库根目录执行：
+pip install -e third_party/pyxianyu
+pip install -e .
+
+# 启动 MCP（stdio 模式）
+python -m xianyu_mcp.server
+
+# 或 HTTP 模式
+python -m xianyu_mcp.server --http
+```
+
+对应的客户端 MCP 配置也要改成 `python` 方式：
+
+```json
+{
+  "command": "python",
+  "args": ["-m", "xianyu_mcp.server"],
+  "cwd": "C:\\Users\\<你的用户名>\\Code\\xianyu-mcp-server"
+}
+```
+
+Trae 项目级推荐写法（自动适配工作区路径）：
+
+```json
+{
+  "command": "python",
+  "args": ["-m", "xianyu_mcp.server"],
+  "cwd": "${workspaceFolder}"
+}
+```
+
+### 3. Trae 检测不到闲鱼 MCP
 
 通常是以下原因之一：
 
@@ -318,12 +456,12 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 - `mcpServers` 中没有注册当前服务
 - `command` 或 `args` 路径写错
 
-### 2. `validate_login` 返回 `FAIL_SYS_USER_VALIDATE`
+### 4. `validate_login` 返回 `FAIL_SYS_USER_VALIDATE`
 
 通常表示当前 Cookie 已失效/不完整，或触发了更强风控校验。  
 建议优先走 `qr_login_generate/status/cookie` 重新获取；如果扫码后仍缺关键字段（例如 `_m_h5_tk` / `x5sec`）导致验证失败，需要按 `qr_login_status` 提示完成一次验证流程后再重试。
 
-### 3. 修改 Cookie 后未生效
+### 5. 修改 Cookie 后未生效
 
 当前实现会在每次工具调用前重新读取 `.env`。通常只要改的是：
 
@@ -333,16 +471,16 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http` 启动后，监听 `htt
 下一次调用通常就会自动读取新值。  
 如果当前 MCP 客户端对服务进程做了缓存，重载客户端中的 MCP 服务会更稳妥。
 
-### 4. `list_my_items` 报页数或每页条数超限
+### 6. `list_my_items` 报页数或每页条数超限
 
 请把 `page_size` 调回默认值 `20`。  
 虽然工具层做了 `1 ~ 50` 的参数约束，但服务端对不同账号的实际限制可能更严格。
 
-### 5. 仓库里有接口，但 MCP 没有对应工具
+### 7. 仓库里有接口，但 MCP 没有对应工具
 
 `third_party/pyxianyu` 是底层能力库，`src/xianyu_mcp` 只封装了其中一部分高频场景。`prepublish_check`、`preget` 等原语仍保留为底层调用能力，未单独暴露到 MCP。
 
-### 6. 部分商品无法重新上架
+### 8. 部分商品无法重新上架
 
 如果商品本身被平台限制为"仅支持 App 发布/编辑"，接口会返回：
 
