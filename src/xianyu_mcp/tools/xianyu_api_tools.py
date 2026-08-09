@@ -26,14 +26,28 @@ def _load_xianyu_modules() -> dict[str, Any]:
         return _IMPORT_CACHE
 
     try:
-        from pyxianyu import apis, core, goofish_live, message
-        from pyxianyu.utils import goofish_utils
+        from pyxianyu import apis, core, message
+        try:
+            from pyxianyu import xianyu_live as live_module
+        except ImportError:
+            from pyxianyu import goofish_live as live_module
+        try:
+            from pyxianyu.utils import xianyu_utils as utils_module
+        except ImportError:
+            from pyxianyu.utils import goofish_utils as utils_module
     except ModuleNotFoundError as exc:
         dev_src = _XIANYU_APIS_ROOT / "src"
         if dev_src.exists():
             sys.path.insert(0, str(dev_src))
-            from pyxianyu import apis, core, goofish_live, message
-            from pyxianyu.utils import goofish_utils
+            from pyxianyu import apis, core, message
+            try:
+                from pyxianyu import xianyu_live as live_module
+            except ImportError:
+                from pyxianyu import goofish_live as live_module
+            try:
+                from pyxianyu.utils import xianyu_utils as utils_module
+            except ImportError:
+                from pyxianyu.utils import goofish_utils as utils_module
         else:
             raise RuntimeError(
                 "未安装 pyxianyu。请先安装 `pyxianyu`（推荐从 PyPI 安装），或在源码开发时初始化 submodule。"
@@ -46,12 +60,12 @@ def _load_xianyu_modules() -> dict[str, Any]:
         "MediaApi": apis.MediaApi,
         "SearchApi": getattr(apis, "SearchApi", None),
         "UserApi": getattr(apis, "UserApi", None),
-        "XianyuLive": goofish_live.XianyuLive,
+        "XianyuLive": live_module.XianyuLive,
         "make_text": message.make_text,
         "make_image": message.make_image,
-        "generate_mid": goofish_utils.generate_mid,
-        "trans_cookies": goofish_utils.trans_cookies,
-        "generate_device_id": goofish_utils.generate_device_id,
+        "generate_mid": utils_module.generate_mid,
+        "trans_cookies": utils_module.trans_cookies,
+        "generate_device_id": utils_module.generate_device_id,
     }
     return _IMPORT_CACHE
 

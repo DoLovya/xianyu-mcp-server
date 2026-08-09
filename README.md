@@ -58,13 +58,13 @@ xianyu-mcp-server/
 │           └── xianyu_api_tools.py # 底层能力封装
 ├── third_party/
 │   └── pyxianyu/                  # 可选：pyxianyu 源码（git submodule，仅开发调试）
-│       ├── apis/                  # auth_api, item_api, media_api
-│       ├── core/                  # client, exceptions
+│       ├── src/pyxianyu/apis/     # auth_api, item_api, media_api
+│       ├── src/pyxianyu/core/     # client, exceptions
 │       ├── docs/                  # 接口分析文档
-│       ├── message/               # 消息类型定义
-│       ├── utils/                 # 签名、Cookie 处理
-│       ├── goofish_live.py        # WebSocket 消息收发
-│       └── goofish_apis.py        # HTTP API 封装
+│       ├── src/pyxianyu/message/  # 消息类型定义
+│       ├── src/pyxianyu/utils/    # 签名、Cookie 处理
+│       ├── src/pyxianyu/xianyu_live.py # WebSocket 消息收发
+│       └── src/pyxianyu/xianyu_apis.py # HTTP API 封装
 ├── openspec/
 │   └── changes/                   # 规范驱动的变更记录
 ├── .trae/
