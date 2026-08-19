@@ -310,12 +310,21 @@ def publish_physical_item(title: str, price: str, desc: str, images: list[str]) 
 
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-async def list_conversations(max_items: int = 1000, include_hidden: bool = False) -> str:
+async def list_conversations(
+    max_items: int = 1000,
+    include_hidden: bool = False,
+    only_top: bool = False,
+) -> str:
     """读取当前账号最近会话列表。
 
     Args:
         max_items: 最多返回多少个会话，默认 1000，当前单次上限 1000。
+            截断发生在 include_hidden / only_top 全部过滤之后。
         include_hidden: 是否包含已隐藏会话，默认 False。
+        only_top: 是否仅返回置顶会话（is_top=true），默认 False。
+            可与 include_hidden、max_items 组合使用：
+            - only_top=True, include_hidden=False → 可见且置顶
+            - only_top=True, include_hidden=True  → 全部置顶（含隐藏）
     """
     payload = _maybe_requires_login_payload()
     if payload:
@@ -323,6 +332,7 @@ async def list_conversations(max_items: int = 1000, include_hidden: bool = False
     return await _get_tools().list_conversations(
         max_items=max_items,
         include_hidden=include_hidden,
+        only_top=only_top,
     )
 
 

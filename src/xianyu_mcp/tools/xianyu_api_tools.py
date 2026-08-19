@@ -670,6 +670,7 @@ class XianYuApiTools:
         self,
         max_items: int = 1000,
         include_hidden: bool = False,
+        only_top: bool = False,
     ) -> str:
         normalized_max_items = min(max(max_items, 1), 1000)
         conversations = await self._guardrails.run_read_async(
@@ -678,13 +679,21 @@ class XianYuApiTools:
         summaries = [self._normalize_conversation(conversation) for conversation in conversations]
         if not include_hidden:
             summaries = [summary for summary in summaries if summary.get("visible", True)]
+        top_count = sum(1 for summary in summaries if summary.get("is_top"))
+        if only_top:
+            summaries = [summary for summary in summaries if summary.get("is_top")]
+        if normalized_max_items > 0:
+            summaries = summaries[:normalized_max_items]
+        final_count = len(summaries)
         return _dump(
             {
                 "success": True,
-                "count": len(summaries),
+                "count": final_count,
+                "top_count": final_count if only_top else top_count,
                 "raw_count": len(conversations),
                 "max_items": normalized_max_items,
                 "include_hidden": include_hidden,
+                "only_top": only_top,
                 "conversations": summaries,
             }
         )
