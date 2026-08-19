@@ -44,7 +44,7 @@ class _FakeClient:
 
 class TestItemSearch(unittest.TestCase):
     def test_search_api_builds_request_data(self) -> None:
-        from apis.search_api import SearchApi
+        from pyxianyu.apis.search_api import SearchApi
 
         client = _FakeClient()
         api = SearchApi(client)
@@ -65,8 +65,8 @@ class TestItemSearch(unittest.TestCase):
         self.assertEqual(got["fromFilter"], True)
 
     def test_missing_m_h5_tk_raises(self) -> None:
-        from core.client import XianyuClient
-        from core.exceptions import XianyuConfigError
+        from pyxianyu.core.client import XianyuClient
+        from pyxianyu.core.exceptions import XianyuConfigError
 
         client = XianyuClient(cookies={}, device_id="dummy")
         params = client.build_mtop_params(

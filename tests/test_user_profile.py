@@ -58,7 +58,7 @@ class _FakeUserApi:
 
 class TestUserProfile(unittest.TestCase):
     def test_user_api_builds_request(self) -> None:
-        from apis.user_api import UserApi
+        from pyxianyu.apis.user_api import UserApi
 
         client = _FakeClient()
         api = UserApi(client)
