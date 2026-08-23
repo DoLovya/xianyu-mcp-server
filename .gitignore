@@ -13,8 +13,6 @@ __pycache__/
 
 artifacts/
 
-scripts/
-
 # 本地运行日志（默认落盘目录）
 /.logs/
 *.log
