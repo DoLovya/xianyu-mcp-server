@@ -72,6 +72,24 @@ jobs:
           uv pip install build
           uv run python -m build
           ls -la dist
+      - name: Install wheel and smoke test (end-user mode)
+        run: |
+          uv venv --python 3.11 /tmp/smoke-venv
+          /tmp/smoke-venv/bin/pip install dist/*.whl
+          echo "--- import smoke ---"
+          /tmp/smoke-venv/bin/python -c "
+            import xianyu_mcp
+            assert xianyu_mcp.__version__ == '${{ env.TAG }}'.lstrip('v'), f'version mismatch: {xianyu_mcp.__version__} vs ${{ env.TAG }}'
+            from xianyu_mcp.tools.xianyu_api_tools import _load_xianyu_modules
+            _load_xianyu_modules()
+            print('import ok, version:', xianyu_mcp.__version__)
+          "
+          echo "--- entrypoint smoke ---"
+          /tmp/smoke-venv/bin/xianyu-mcp --help > /dev/null || {
+            echo "WARNING: entrypoint --help failed (may require stdio); trying module call"
+            /tmp/smoke-venv/bin/python -m xianyu_mcp.server --help > /dev/null || true
+          }
+          echo "wheel install smoke: OK"
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:

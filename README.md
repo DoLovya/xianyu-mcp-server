@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
 [![CI](https://github.com/DoLovya/xianyu-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/DoLovya/xianyu-mcp-server/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-GPL%20v3.0-green)](./LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue)](./pyproject.toml)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](./pyproject.toml)
 
 基于 `pyxianyu` 封装的闲鱼 MCP 项目，用于把闲鱼商品、会话、消息发送等能力接入支持 MCP 的客户端。
 
@@ -267,7 +267,9 @@ python -m xianyu_mcp.server --http
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
 
-> **⚠️ 重要提示**：本项目未发布到 PyPI，请勿使用 `uvx xianyu-mcp`，否则会安装到同名的第三方包并导致错误（如 `AttributeError: 'Server' object has no attribute 'list_tools'`）。必须先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行。
+> **ℹ️ 安装说明**：本项目 1.0.0 起已支持通过 PyPI 安装（包名 `xianyu-mcp`）。  
+> > - 若环境干净且已完成 PyPI 发布：可直接 `pip install xianyu-mcp` 或 `uvx --from xianyu-mcp xianyu-mcp --help` 使用。  
+> > - 若从源码开发/首次发布前：**请先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行**，避免 `uvx` 拉到同名第三方旧包导致 `AttributeError` 一类错误。
 
 ## 客户端接入
 
@@ -358,7 +360,7 @@ Trae 项目级配置也可用 `cwd` 写法（推荐 `cwd` + `${workspaceFolder}`
 - `command` 优先使用 `uv`，可使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
 - 装不上 uv 时，`command` 用 `python` + `args: ["-m", "xianyu_mcp.server"]`，并把 `cwd`（或 Working directory）设置为仓库绝对路径
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
-- **不要使用 `uvx xianyu-mcp`**：本项目未发布到 PyPI，`uvx` 会安装到同名的第三方包并报错
+- **推荐使用 `uv run` 而非 `uvx`**：若已完成 PyPI 官方发布，可使用 `uvx --from xianyu-mcp xianyu-mcp`；否则请优先源码方式，避免 `uvx` 装到同名第三方旧包报错
 
 HTTP 模式（可选）：以 `uv run xianyu-mcp --http`（或 `python -m xianyu_mcp.server --http`）启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
 
@@ -378,9 +380,9 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http`（或 `python -m xianyu
 
 ### 1. 使用 `uvx xianyu-mcp` 报 `AttributeError: 'Server' object has no attribute 'list_tools'`
 
-这是因为本项目**未发布到 PyPI**，`uvx xianyu-mcp` 会从 PyPI 安装一个同名的第三方包，而不是本项目。
+这是因为**安装到了非官方的同名第三方旧包**。虽然本项目 1.0.0+ 已支持 PyPI 发布（`xianyu-mcp`），但若官方包尚未在 PyPI 上注册成功，或 `uvx` 解析到了同名旧包，会出现该错误。
 
-**解决方法**：必须先 clone 仓库，再使用 `uv run` 方式运行：
+**解决方法（推荐，避免踩坑）**：优先使用源码 `uv run` 方式：
 
 ```bash
 git clone https://github.com/DoLovya/xianyu-mcp-server.git
@@ -391,7 +393,8 @@ uv pip install -e .
 uv run xianyu-mcp
 ```
 
-客户端配置中，`command` 使用 `uv`，`args` 使用 `--directory <仓库绝对路径> run xianyu-mcp`，不要使用 `uvx`。
+客户端配置中，`command` 使用 `uv`，`args` 使用 `--directory <仓库绝对路径> run xianyu-mcp`。  
+若已确认 PyPI 上官方 `xianyu-mcp` 为 DoLovya 发布：可使用 `uvx --from xianyu-mcp xianyu-mcp` 显式指定官方包来避免误装。
 
 ### 2. Windows 报 `'uv' 不是内部或外部命令，也不是可运行的程序或批处理文件`
 
