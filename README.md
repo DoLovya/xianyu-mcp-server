@@ -180,7 +180,73 @@ pip install --user uv
 
 ## 快速开始
 
-### 1. 克隆仓库并拉取子模块
+### 方式 A：PyPI 一键安装（推荐普通用户，无需 clone 仓库）
+
+> **前置条件**：`xianyu-mcp-server` 已发布到 PyPI（即本仓库已完成打 tag + CI 发布流程）。
+> 官方包名固定为 `xianyu-mcp-server`，**一定不要**直接输 `uvx xianyu-mcp`（会装到第三方旧包）。
+
+#### A1. 一行直接跑（uvx 模式，无需安装）
+
+Cookie 可以通过环境变量注入，或直接在 `.env` 当前目录下放 `.env`（`uvx` 会从 `cwd` 自动加载 `.env`）：
+
+```bash
+# 最简：启动 stdio 模式（给 MCP 客户端用）
+XIANYU_COOKIE_FILE=./cookie.txt \
+  uvx --from xianyu-mcp-server xianyu-mcp-server
+
+# 或：启动 HTTP/SSE 模式（给 Cherry Studio / 浏览器调试用）
+XIANYU_COOKIE_FILE=./cookie.txt \
+  uvx --from xianyu-mcp-server xianyu-mcp-server --http
+```
+
+uvx 模式默认监听 HTTP 同上面源码模式：`http://localhost:8000/mcp`
+
+#### A2. 先安装再跑（pip 模式，有环境想固定版本）
+
+```bash
+pip install xianyu-mcp-server==1.0.0
+# 或
+uv pip install --system xianyu-mcp-server==1.0.0
+```
+
+安装后用入口点或 module 方式启动：
+
+```bash
+# 入口点（和包名一致）
+xianyu-mcp-server --http
+# 或 module 方式（更稳，跨平台 PATH 友好）
+python -m xianyu_mcp.server --http
+```
+
+#### A3. MCP 客户端配置：uvx 写法
+
+把下面任意一个客户端 `command` / `args` 拷贝到你的 MCP 配置中即可，无需 clone 仓库：
+
+```json
+{
+  "mcpServers": {
+    "xianyu-mcp-server": {
+      "command": "uvx",
+      "args": ["--from", "xianyu-mcp-server", "xianyu-mcp-server"],
+      "env": {
+        "XIANYU_COOKIE": "",
+        "XIANYU_COOKIE_FILE": ""
+      }
+    }
+  }
+}
+```
+
+如果你的客户端不支持 `env`（例如某些早期 MCP 实现），也可以直接在 `cwd` 下放一个 `.env` 文件，`uvx` 会从启动目录自动加载。
+
+> **💡 uvx 避坑口诀：「永远加 `--from xianyu-mcp-server`」**。
+> `uvx --from xianyu-mcp-server xianyu-mcp-server` 两个地方都要出现完整包名，前者告诉 uvx 从哪个 PyPI 包找命令，后者是要执行的命令名（我们包名/命令名完全一致，所以写两遍）。直接裸写 `uvx xianyu-mcp` 会解析到第三方旧包，出现 `AttributeError` 等莫名错误，见 FAQ。
+
+---
+
+### 方式 B：源码开发者模式（clone + editable，适合二次开发/贡献代码）
+
+#### 1. 克隆仓库并拉取子模块
 
 ```bash
 git clone https://github.com/DoLovya/xianyu-mcp-server.git
@@ -188,7 +254,7 @@ cd xianyu-mcp-server
 git submodule update --init --recursive
 ```
 
-### 2. 准备环境变量
+#### 2. 准备环境变量
 
 ```bash
 cp .env.example .env
@@ -227,7 +293,7 @@ XIANYU_SETUP_AUTO_OPEN=1      # 0 表示不自动打开浏览器/验证链接
 XIANYU_SETUP_AUTO_WRITE_ENV=1 # 0 表示不自动写入 .env，需要你手动调用 qr_login_save_env
 ```
 
-### 3. 安装依赖
+#### 3. 安装依赖
 
 **使用 uv（推荐）**：
 
@@ -243,7 +309,7 @@ pip install -e third_party/pyxianyu
 pip install -e .
 ```
 
-### 4. 本地启动 MCP
+#### 4. 本地启动 MCP
 
 默认使用 `stdio`：
 
@@ -266,10 +332,6 @@ python -m xianyu_mcp.server --http
 ```
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
-
-> **ℹ️ 安装说明**：本项目 1.0.0 起已支持通过 PyPI 安装（官方包名 `xianyu-mcp-server`，与第三方旧包 `xianyu-mcp` 完全隔离）。  
-> > - 若环境干净且已完成 PyPI 发布：可直接 `pip install xianyu-mcp-server` 或 `uvx --from xianyu-mcp-server xianyu-mcp-server --help` 使用。  
-> > - 若从源码开发/首次发布前：**请先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行**。
 
 ## 客户端接入
 
