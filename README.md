@@ -249,7 +249,7 @@ pip install -e .
 
 ```bash
 # 推荐（需要 uv）
-uv run xianyu-mcp
+uv run xianyu-mcp-server
 
 # 或使用 pip 方案：
 python -m xianyu_mcp.server
@@ -259,7 +259,7 @@ python -m xianyu_mcp.server
 
 ```bash
 # 推荐（需要 uv）
-uv run xianyu-mcp --http
+uv run xianyu-mcp-server --http
 
 # 或使用 pip 方案：
 python -m xianyu_mcp.server --http
@@ -267,9 +267,9 @@ python -m xianyu_mcp.server --http
 
 HTTP 模式默认监听：`http://localhost:8000/mcp`
 
-> **ℹ️ 安装说明**：本项目 1.0.0 起已支持通过 PyPI 安装（包名 `xianyu-mcp`）。  
-> > - 若环境干净且已完成 PyPI 发布：可直接 `pip install xianyu-mcp` 或 `uvx --from xianyu-mcp xianyu-mcp --help` 使用。  
-> > - 若从源码开发/首次发布前：**请先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行**，避免 `uvx` 拉到同名第三方旧包导致 `AttributeError` 一类错误。
+> **ℹ️ 安装说明**：本项目 1.0.0 起已支持通过 PyPI 安装（官方包名 `xianyu-mcp-server`，与第三方旧包 `xianyu-mcp` 完全隔离）。  
+> > - 若环境干净且已完成 PyPI 发布：可直接 `pip install xianyu-mcp-server` 或 `uvx --from xianyu-mcp-server xianyu-mcp-server --help` 使用。  
+> > - 若从源码开发/首次发布前：**请先 clone 仓库后使用 `uv run` 或 `python -m` 方式运行**。
 
 ## 客户端接入
 
@@ -284,7 +284,7 @@ Trae 项目级配置（推荐，已内置在仓库 `.trae/mcp.json`）：
   "mcpServers": {
     "xianyu-mcp-server": {
       "command": "uv",
-      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp"],
+      "args": ["--directory", "${workspaceFolder}", "run", "xianyu-mcp-server"],
       "env": {
         "XIANYU_COOKIE": "",
         "XIANYU_COOKIE_FILE": ""
@@ -307,7 +307,7 @@ Trae 会基于 `env` 中出现的键渲染输入框。推荐优先使用 `XIANYU
         "--directory",
         "C:\\Users\\<user>\\Code\\xianyu-mcp-server",
         "run",
-        "xianyu-mcp"
+        "xianyu-mcp-server"
       ],
       "env": {
         "XIANYU_COOKIE_FILE": "C:\\Users\\<user>\\Code\\xianyu-mcp-server\\artifacts\\xianyu_cookie.txt"
@@ -348,21 +348,21 @@ Trae 项目级配置也可用 `cwd` 写法（推荐 `cwd` + `${workspaceFolder}`
 
 各客户端差异：
 
-| 客户端         | 配置文件路径                                                               | 支持 `${workspaceFolder}` | 备注                                                                                                                                                                                                                                                 |
-| -------------- | -------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Trae           | `.trae/mcp.json`                                                           | 是                        | 配置后重载工作区                                                                                                                                                                                                                                     |
-| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径            | 保存后重启                                                                                                                                                                                                                                           |
-| Cursor         | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局）                | 项目级支持                | 全局配置需绝对路径                                                                                                                                                                                                                                   |
-| VS Code        | `.vscode/mcp.json`                                                         | 是                        | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+                                                                                                                                                              |
-| Cherry Studio  | UI 配置，无配置文件                                                        | N/A                       | 设置 → MCP 服务器 → 添加，类型选 STDIO，`command` 填 `uv`，`args` 填 `--directory C:\Users\<user>\Code\xianyu-mcp-server run xianyu-mcp`；装不上 uv 时 `command` 填 `python`，`args` 填 `-m xianyu_mcp.server`，**Working directory** 填仓库绝对路径 |
+| 客户端         | 配置文件路径                                                               | 支持 `${workspaceFolder}` | 备注                                                                                                                                                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trae           | `.trae/mcp.json`                                                           | 是                        | 配置后重载工作区                                                                                                                                                                                                                                        |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（macOS） | 否，需绝对路径            | 保存后重启                                                                                                                                                                                                                                              |
+| Cursor         | `.cursor/mcp.json`（项目级）或 `~/.cursor/mcp.json`（全局）                | 项目级支持                | 全局配置需绝对路径                                                                                                                                                                                                                                      |
+| VS Code        | `.vscode/mcp.json`                                                         | 是                        | 使用 `"servers"` 字段（非 `"mcpServers"`），需显式 `"type": "stdio"`；需 VS Code 1.102+                                                                                                                                                                 |
+| Cherry Studio  | UI 配置，无配置文件                                                        | N/A                       | 设置 → MCP 服务器 → 添加，类型选 STDIO，`command` 填 `uv`，`args` 填 `--directory C:\Users\<user>\Code\xianyu-mcp-server run xianyu-mcp-server`；装不上 uv 时 `command` 填 `python`，`args` 填 `-m xianyu_mcp.server`，**Working directory** 填仓库绝对路径 |
 
 - `xianyu-mcp-server` 只是 MCP 服务名，可以自定义
 - `command` 优先使用 `uv`，可使用绝对路径，例如 `/Users/<user>/.trae/tools/uv/latest/uv`
 - 装不上 uv 时，`command` 用 `python` + `args: ["-m", "xianyu_mcp.server"]`，并把 `cwd`（或 Working directory）设置为仓库绝对路径
 - Windows 路径使用反斜杠，例如 `C:\\Users\\<user>\\Code\\xianyu-mcp-server`
-- **推荐使用 `uv run` 而非 `uvx`**：若已完成 PyPI 官方发布，可使用 `uvx --from xianyu-mcp xianyu-mcp`；否则请优先源码方式，避免 `uvx` 装到同名第三方旧包报错
+- **推荐使用 `uv run` 而非 `uvx`**：若已完成 PyPI 官方发布，可使用 `uvx --from xianyu-mcp-server xianyu-mcp-server`；否则请优先源码方式
 
-HTTP 模式（可选）：以 `uv run xianyu-mcp --http`（或 `python -m xianyu_mcp.server --http`）启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
+HTTP 模式（可选）：以 `uv run xianyu-mcp-server --http`（或 `python -m xianyu_mcp.server --http`）启动后，监听 `http://localhost:8000/mcp`，Cherry Studio 等客户端可选 SSE 或 HTTP 类型接入。
 
 ## 推荐验证流程
 
@@ -378,9 +378,9 @@ HTTP 模式（可选）：以 `uv run xianyu-mcp --http`（或 `python -m xianyu
 
 ## 常见问题
 
-### 1. 使用 `uvx xianyu-mcp` 报 `AttributeError: 'Server' object has no attribute 'list_tools'`
+### 1. 直接 `uvx xianyu-mcp-server` 或 `uvx --from xianyu-mcp-server xianyu-mcp-server` 报找不到命令/AttributeError
 
-这是因为**安装到了非官方的同名第三方旧包**。虽然本项目 1.0.0+ 已支持 PyPI 发布（`xianyu-mcp`），但若官方包尚未在 PyPI 上注册成功，或 `uvx` 解析到了同名旧包，会出现该错误。
+`uvx` 用法一定要显式加 `--from xianyu-mcp-server`，否则会解析到第三方旧包 `xianyu-mcp` 或找不到官方包。
 
 **解决方法（推荐，避免踩坑）**：优先使用源码 `uv run` 方式：
 
@@ -390,11 +390,11 @@ cd xianyu-mcp-server
 git submodule update --init --recursive
 uv pip install -e third_party/pyxianyu
 uv pip install -e .
-uv run xianyu-mcp
+uv run xianyu-mcp-server
 ```
 
-客户端配置中，`command` 使用 `uv`，`args` 使用 `--directory <仓库绝对路径> run xianyu-mcp`。  
-若已确认 PyPI 上官方 `xianyu-mcp` 为 DoLovya 发布：可使用 `uvx --from xianyu-mcp xianyu-mcp` 显式指定官方包来避免误装。
+客户端配置中，`command` 使用 `uv`，`args` 使用 `--directory <仓库绝对路径> run xianyu-mcp-server`。  
+若已完成官方 PyPI 发布并希望使用 `uvx`：请**显式指定官方包名**：`uvx --from xianyu-mcp-server xianyu-mcp-server --help`。
 
 ### 2. Windows 报 `'uv' 不是内部或外部命令，也不是可运行的程序或批处理文件`
 
@@ -411,7 +411,7 @@ uv run xianyu-mcp
    ```powershell
    uv --version
    ```
-4. 回到仓库目录，按 README 的步骤重新执行 `uv pip install -e ...` 和 `uv run xianyu-mcp`。
+4. 回到仓库目录，按 README 的步骤重新执行 `uv pip install -e ...` 和 `uv run xianyu-mcp-server`。
 
 > 小提示：如果 Trae / Cherry Studio 等客户端已经打开，安装 uv 后最好也重启一下客户端，让它重新读取系统 PATH。
 

@@ -84,9 +84,9 @@ jobs:
             _load_xianyu_modules()
             print('import ok, version:', xianyu_mcp.__version__)
           "
-          echo "--- entrypoint smoke ---"
-          /tmp/smoke-venv/bin/xianyu-mcp --help > /dev/null || {
-            echo "WARNING: entrypoint --help failed (may require stdio); trying module call"
+          echo "--- entrypoint smoke (xianyu-mcp-server) ---"
+          /tmp/smoke-venv/bin/xianyu-mcp-server --help > /dev/null || {
+            echo "WARNING: entrypoint xianyu-mcp-server --help failed (may require stdio); trying module call"
             /tmp/smoke-venv/bin/python -m xianyu_mcp.server --help > /dev/null || true
           }
           echo "wheel install smoke: OK"
