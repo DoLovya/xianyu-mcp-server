@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "基于 pyxianyu 的闲鱼 MCP 服务（Goofish MCP Server by DoLovya）"
 requires-python = ">=3.11"
 dependencies = [
-    "mcp[cli]>=1.0.0,<2.0.0",
+    "mcp[cli]>=1.0.0,<3.0.0",
     "python-dotenv>=1.0.0",
     "pyxianyu>=1.0.0,<2.0.0",
     "requests>=2.31.0",
