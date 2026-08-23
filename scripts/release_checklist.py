@@ -215,7 +215,8 @@ def main() -> int:
         print("\n建议：根据上面 ❌ 明细逐个修复后，重新运行本脚本再打 tag。", file=sys.stderr)
         return 1
     print("🎉 发布前自检全部通过，可以执行：")
-    print("   1. git tag -s v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'")
+    print("   1. git tag -a v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'")
+    print("      （需要 GPG 签名请自行加 -s： git tag -s v1.0.0 -m 'Release xianyu-mcp-server 1.0.0' ）")
     print("   2. git push origin v1.0.0")
     return 0
 

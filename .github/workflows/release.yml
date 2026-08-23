@@ -57,14 +57,27 @@ jobs:
           import tomllib
           tag = os.environ.get("TAG", "")
           if not re.fullmatch(r"v\d+\.\d+\.\d+(?:[-+].+)?", tag):
-              raise SystemExit(f"Tag format invalid: {tag!r}. Expected vX.Y.Z")
+              msg = [
+                  f"Tag format invalid: {tag!r}. Expected vX.Y.Z（必须带前缀 v，例如 v1.0.0）",
+                  "正确打 tag 命令（推荐，无 GPG 依赖）：git tag -a v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'",
+                  "若本机已配置 GPG 签名，也可使用：git tag -s v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'",
+                  "若打错 tag，删除并重打：git tag -d 1.0.0 && git push --delete origin 1.0.0",
+              ]
+              raise SystemExit("\n".join(msg))
           with open("pyproject.toml", "rb") as f:
               data = tomllib.load(f)
           version = (data.get("project", {}) or {}).get("version", "")
           if not version:
               raise SystemExit("pyproject.toml missing [project].version")
           if tag.lstrip("v") != version:
-              raise SystemExit(f"Version mismatch: tag={tag.lstrip('v')} pyproject={version}")
+              msg = [
+                  f"Version mismatch: tag={tag.lstrip('v')!r} 与 pyproject.version={version!r} 不相等",
+                  f"请删除错误 tag 后重新打：",
+                  f"  git tag -d {tag} && git push --delete origin {tag} 2>/dev/null || true",
+                  f"  git tag -a v{version} -m 'Release xianyu-mcp-server {version}'",
+                  f"  git push origin v{version}",
+              ]
+              raise SystemExit("\n".join(msg))
           print(f"OK: tag={tag} version={version}")
           PY
       - name: Build wheel and sdist
