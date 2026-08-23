@@ -45,15 +45,19 @@ CI MUST 进行 Python 包构建校验（wheel 与 sdist），并将 `dist/` 产�
 - **THEN** CI 上传 `dist/` 为 Actions artifact，供后续下载与排查
 
 ### Requirement: Release workflow produces and publishes release artifacts
-仓库 MUST 提供一个 Release 工作流，在符合版本规范的 tag/release 触发时构建发布产物，并将构建产物上传为 GitHub Release 附件；仓库 SHOULD 支持发布到 PyPI（优先 Trusted Publishing，其次 API Token）。
+仓库 MUST 提供一个 Release 工作流，在符合版本规范的 `v*` tag 触发时构建发布产物，并将构建产物上传为 GitHub Release 附件；对于合法版本 tag，工作流 MUST 自动尝试发布到 PyPI。`workflow_dispatch` MAY 作为补发或重试入口，但不应成为日常正式发版的唯一入口。
 
 #### Scenario: Tag triggers release build and GitHub release assets
 - **WHEN** 推送一个符合规范的版本 tag（例如 `vX.Y.Z`）
 - **THEN** Release 工作流构建产物并将 `dist/*` 上传为 GitHub Release 附件
 
-#### Scenario: Optional publish to PyPI
-- **WHEN** 仓库配置了 PyPI 发布所需的 Trusted Publishing 或 `PYPI_API_TOKEN`
-- **THEN** Release 工作流将构建产物发布到 PyPI（或等价制品仓库）
+#### Scenario: Valid tag automatically publishes to PyPI
+- **WHEN** 推送一个符合规范的版本 tag（例如 `vX.Y.Z`），且仓库已配置 PyPI 发布所需的 Trusted Publishing 或 `PYPI_API_TOKEN`
+- **THEN** Release 工作流自动执行 PyPI 发布步骤，而不是依赖额外的仓库变量开关
+
+#### Scenario: Manual dispatch is used only for retry or recovery
+- **WHEN** 维护者通过 `workflow_dispatch` 手动运行 Release 工作流
+- **THEN** 该执行可用于补发、重试或恢复失败的发布，但正式发布路径仍以 `push v* tag` 为准
 
 ### Requirement: Repository provides CI/CD operations documentation
 仓库 MUST 提供 CI/CD 运维文档，覆盖工作流触发方式、所需 Secrets、发布与回滚流程、分支保护推荐配置与常见故障排查。
@@ -63,7 +67,7 @@ CI MUST 进行 Python 包构建校验（wheel 与 sdist），并将 `dist/` 产�
 - **THEN** 可在不阅读工作流源码的情况下完成一次可重复的发布
 
 ### Requirement: Optional security and dependency automation
-仓库 SHOULD 提供基础安全与依赖自动化（如 Dependabot、CodeQL），并能以最小成本启用/禁用。
+仓库 MUST 以可开关方式提供基础安全与依赖自动化（如 Dependabot、CodeQL），并能以最小成本启用/禁用。
 
 #### Scenario: Dependabot opens dependency update PRs
 - **WHEN** 启用 Dependabot 配置

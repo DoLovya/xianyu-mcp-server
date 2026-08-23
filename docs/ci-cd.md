@@ -43,7 +43,7 @@ release workflow 会做两件事：
 
 workflow 会构建并把 `dist/*` 作为 GitHub Release 附件上传。
 
-### 2.4 PyPI 发布（可选）
+### 2.4 PyPI 发布
 
 本仓库提供两种发布方式：
 
@@ -52,10 +52,10 @@ workflow 会构建并把 `dist/*` 作为 GitHub Release 附件上传。
 - 依赖 OIDC，无需长期保存 PyPI Token
 - 需要在 PyPI 项目配置中允许该 GitHub 仓库发布（PyPI 侧配置一次即可）
 
-启用方式（二选一）：
+默认行为：
 
-- 手动触发 workflow 时勾选 `publish_pypi=true` 且 `pypi_via_token=false`
-- 或设置 Repository Variable：`PUBLISH_PYPI_ON_TAG=1`，使 tag push 自动发布到 PyPI
+- 推送符合规范的 `v*` tag 时，workflow 会自动尝试通过 Trusted Publishing 发布到 PyPI
+- `workflow_dispatch` 保留为补发 / 重试入口；如需手动补发，可勾选 `publish_pypi=true` 且 `pypi_via_token=false`
 
 #### 方式 B：API Token（备选）
 
@@ -66,6 +66,11 @@ workflow 会构建并把 `dist/*` 作为 GitHub Release 附件上传。
 启用方式：
 
 - 手动触发 workflow 时勾选 `publish_pypi=true` 且 `pypi_via_token=true`
+
+说明：
+
+- 主路径是 `push v* tag` 自动发布，策略与 `third_party/pyxianyu` 对齐
+- `PUBLISH_PYPI_ON_TAG` 已不再作为发布条件，避免出现“GitHub Release 成功但 PyPI 步骤被跳过”的歧义状态
 
 ### 2.5 回滚 / 撤回发布（建议流程）
 

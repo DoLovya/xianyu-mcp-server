@@ -53,7 +53,6 @@ jobs:
           from __future__ import annotations
           import os
           import re
-          import sys
           import tomllib
           tag = os.environ.get("TAG", "")
           if not re.fullmatch(r"v\d+\.\d+\.\d+(?:[-+].+)?", tag):
@@ -61,7 +60,7 @@ jobs:
                   f"Tag format invalid: {tag!r}. Expected vX.Y.Z（必须带前缀 v，例如 v1.0.0）",
                   "正确打 tag 命令（推荐，无 GPG 依赖）：git tag -a v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'",
                   "若本机已配置 GPG 签名，也可使用：git tag -s v1.0.0 -m 'Release xianyu-mcp-server 1.0.0'",
-                  "若打错 tag，删除并重打：git tag -d 1.0.0 && git push --delete origin 1.0.0",
+                  "若打错 tag，删除并重打：git tag -d v1.0.0 && git push --delete origin v1.0.0",
               ]
               raise SystemExit("\n".join(msg))
           with open("pyproject.toml", "rb") as f:
@@ -110,7 +109,7 @@ jobs:
           files: dist/*
           fail_on_unmatched_files: true
       - name: Publish to PyPI (Trusted Publishing)
-        if: ${{ ((github.event_name == 'workflow_dispatch' && inputs.publish_pypi && !inputs.pypi_via_token) || (github.event_name == 'push' && vars.PUBLISH_PYPI_ON_TAG == '1')) }}
+        if: ${{ (github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.publish_pypi && !inputs.pypi_via_token) }}
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Publish to PyPI (API Token)
         if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_pypi && inputs.pypi_via_token && secrets.PYPI_API_TOKEN != '') }}

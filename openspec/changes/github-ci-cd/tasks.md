@@ -15,6 +15,7 @@
 - [x] 2.3 配置 PyPI 发布路径（两选一）：
   - [x] 2.3.1 优先：PyPI Trusted Publishing（OIDC）所需的 GitHub/PyPI 配置与文档
   - [x] 2.3.2 备选：使用 `PYPI_API_TOKEN` Secret 的发布步骤与文档
+  - [x] 2.3.3 对齐 `third_party/pyxianyu` 的发版策略：移除 `PUBLISH_PYPI_ON_TAG` 条件开关，使 `push v* tag` 默认自动发布到 PyPI
 - [x] 2.4 增加“发布前校验”步骤（版本号规范、tag 规范、构建产物存在性校验）
 - [x] 2.5 增加“回滚/撤回发布”建议流程（文档化）
 
@@ -33,5 +34,5 @@
 ## 5. 验证与交付
 
 - [ ] 5.1 在一个测试分支触发 CI（PR）并确认所有 job 通过且产物可下载
-- [ ] 5.2 使用 `workflow_dispatch` 或测试 tag 验证 release 流水线（至少 GitHub Release 附件成功）
+- [ ] 5.2 使用测试 tag 或 `workflow_dispatch` 验证 release 流水线，确认 GitHub Release 附件与 PyPI 自动发布路径都成功
 - [x] 5.3 汇总交付物清单（新增文件列表、Secrets 列表、触发器列表）并在 PR 描述中对齐

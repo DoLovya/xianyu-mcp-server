@@ -10,7 +10,7 @@
 
 - 新增 GitHub Actions 工作流（`.github/workflows/*.yml`）：
   - CI：在 PR / push 时自动执行安装、单元测试、基础构建校验，并产出构建产物供排查
-  - CD（Release）：在 tag/release 触发时自动构建并发布 Python 包（可选发布到 PyPI），并生成 GitHub Release 附件
+  - CD（Release）：在 `v*` tag 触发时自动构建并发布 Python 包，默认对齐 `third_party/pyxianyu` 的发版策略，直接发布到 PyPI，并生成 GitHub Release 附件；`workflow_dispatch` 仅作为补发/重试入口
   - 安全与依赖治理：CodeQL（可选）、Dependabot（可选）等基础安全/依赖自动化
 - 增加 CI/CD 文档与运维手册：
   - 工作流说明、触发条件、所需 Secrets、发布流程、回滚策略、常见故障排查
@@ -37,3 +37,4 @@
   - GitHub Secrets（如 `PYPI_API_TOKEN` 等）
   - 分支保护规则（要求 CI 通过才能合并）
   - Release/tag 规范（语义化版本、tag 命名等）
+  - 移除 `PUBLISH_PYPI_ON_TAG` 这类额外开关，避免“GitHub Release 成功但 PyPI 未发布”的歧义行为
