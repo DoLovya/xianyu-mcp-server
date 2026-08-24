@@ -115,6 +115,7 @@ jobs:
           TAG: ${{ steps.resolve.outputs.tag }}
         run: |
           python -m venv /tmp/smoke-venv
+          /tmp/smoke-venv/bin/python -m ensurepip --upgrade
           /tmp/smoke-venv/bin/python -m pip install --upgrade pip
           /tmp/smoke-venv/bin/python -m pip install dist/*.whl
           echo "--- import smoke ---"
