@@ -33,6 +33,7 @@ jobs:
     env:
       UV_INDEX_URL: ${{ vars.UV_INDEX_URL }}
       UV_EXTRA_INDEX_URL: ${{ vars.UV_EXTRA_INDEX_URL }}
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -152,7 +153,7 @@ jobs:
         if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && steps.resolve.outputs.publish_pypi == 'true' && steps.resolve.outputs.pypi_via_token != 'true') }}
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Publish to PyPI (API Token)
-        if: ${{ github.event_name == 'workflow_dispatch' && steps.resolve.outputs.publish_pypi == 'true' && steps.resolve.outputs.pypi_via_token == 'true' && secrets.PYPI_API_TOKEN != '' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.resolve.outputs.publish_pypi == 'true' && steps.resolve.outputs.pypi_via_token == 'true' && env.PYPI_API_TOKEN != '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ env.PYPI_API_TOKEN }}
