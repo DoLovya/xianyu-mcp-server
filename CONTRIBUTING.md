@@ -57,10 +57,10 @@ XIANYU_COOKIE_FILE=./cookie.txt
 
 ```bash
 # 启动 MCP 服务（stdio 模式）
-uv run xianyu-mcp
+uv run xianyu-mcp-server
 
 # HTTP 模式
-uv run xianyu-mcp --http
+uv run xianyu-mcp-server --http
 
 # 运行测试
 uv run python -m unittest discover tests/ -v
