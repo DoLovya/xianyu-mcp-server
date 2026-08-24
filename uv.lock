@@ -837,7 +837,7 @@ wheels = [
 
 [[package]]
 name = "pyxianyu"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "third_party/pyxianyu" }
 dependencies = [
     { name = "blackboxprotobuf" },
@@ -1260,8 +1260,8 @@ wheels = [
 ]
 
 [[package]]
-name = "xianyu-mcp"
-version = "0.1.0"
+name = "xianyu-mcp-server"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "blackboxprotobuf" },
