@@ -33,12 +33,48 @@ jobs:
     env:
       UV_INDEX_URL: ${{ vars.UV_INDEX_URL }}
       UV_EXTRA_INDEX_URL: ${{ vars.UV_EXTRA_INDEX_URL }}
-      TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.tag || github.ref }}
           submodules: true
+      - name: Resolve release inputs
+        id: resolve
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+          import json
+          import os
+
+          event_name = os.environ["GITHUB_EVENT_NAME"]
+          tag = os.environ.get("GITHUB_REF_NAME", "")
+          publish_pypi = "false"
+          pypi_via_token = "false"
+          manual_checkout = "false"
+
+          if event_name == "workflow_dispatch":
+              with open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8") as f:
+                  payload = json.load(f)
+              inputs = payload.get("inputs") or {}
+              tag = (inputs.get("tag") or "").strip()
+              publish_pypi = str(inputs.get("publish_pypi", "false")).lower()
+              pypi_via_token = str(inputs.get("pypi_via_token", "false")).lower()
+              manual_checkout = "true"
+
+          if not tag:
+              raise SystemExit("Missing release tag. For manual dispatch, provide inputs.tag such as v1.0.0")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"tag={tag}\n")
+              out.write(f"publish_pypi={publish_pypi}\n")
+              out.write(f"pypi_via_token={pypi_via_token}\n")
+              out.write(f"manual_checkout={manual_checkout}\n")
+          PY
+      - name: Checkout target tag for manual dispatch
+        if: ${{ steps.resolve.outputs.manual_checkout == 'true' }}
+        run: |
+          git fetch --force --tags origin "refs/tags/${{ steps.resolve.outputs.tag }}:refs/tags/${{ steps.resolve.outputs.tag }}"
+          git checkout --detach "refs/tags/${{ steps.resolve.outputs.tag }}"
+          git submodule update --init --recursive
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -48,6 +84,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
       - name: Release precheck
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
         run: |
           python - <<'PY'
           from __future__ import annotations
@@ -85,13 +123,15 @@ jobs:
           uv run python -m build
           ls -la dist
       - name: Install wheel and smoke test (end-user mode)
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
         run: |
           uv venv --python 3.11 /tmp/smoke-venv
           /tmp/smoke-venv/bin/pip install dist/*.whl
           echo "--- import smoke ---"
           /tmp/smoke-venv/bin/python -c "
             import xianyu_mcp
-            assert xianyu_mcp.__version__ == '${{ env.TAG }}'.lstrip('v'), f'version mismatch: {xianyu_mcp.__version__} vs ${{ env.TAG }}'
+            assert xianyu_mcp.__version__ == '${TAG}'.lstrip('v'), f'version mismatch: {xianyu_mcp.__version__} vs ${TAG}'
             from xianyu_mcp.tools.xianyu_api_tools import _load_xianyu_modules
             _load_xianyu_modules()
             print('import ok, version:', xianyu_mcp.__version__)
@@ -105,14 +145,14 @@ jobs:
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.TAG }}
+          tag_name: ${{ steps.resolve.outputs.tag }}
           files: dist/*
           fail_on_unmatched_files: true
       - name: Publish to PyPI (Trusted Publishing)
-        if: ${{ (github.event_name == 'push') || (github.event_name == 'workflow_dispatch' && inputs.publish_pypi && !inputs.pypi_via_token) }}
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && steps.resolve.outputs.publish_pypi == 'true' && steps.resolve.outputs.pypi_via_token != 'true') }}
         uses: pypa/gh-action-pypi-publish@release/v1
       - name: Publish to PyPI (API Token)
-        if: ${{ (github.event_name == 'workflow_dispatch' && inputs.publish_pypi && inputs.pypi_via_token && secrets.PYPI_API_TOKEN != '') }}
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.resolve.outputs.publish_pypi == 'true' && steps.resolve.outputs.pypi_via_token == 'true' && secrets.PYPI_API_TOKEN != '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}

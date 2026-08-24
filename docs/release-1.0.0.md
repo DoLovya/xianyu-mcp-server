@@ -115,6 +115,7 @@ git push origin v1.0.0
 - `pypi_via_token = false`
 
 此模式仍然依赖 PyPI Trusted Publishing。
+页面里选择的 branch 仅用于加载 workflow 文件，真正发布的目标版本以 `tag` 输入为准。
 
 ### 5.3 方式 C：手动触发 + API Token
 

@@ -71,6 +71,7 @@ workflow 会构建并把 `dist/*` 作为 GitHub Release 附件上传。
 
 - 主路径是 `push v* tag` 自动发布，策略与 `third_party/pyxianyu` 对齐
 - `PUBLISH_PYPI_ON_TAG` 已不再作为发布条件，避免出现“GitHub Release 成功但 PyPI 步骤被跳过”的歧义状态
+- 手动触发 `workflow_dispatch` 时，页面里选择的 branch 仅用于加载 workflow 文件；真正发布的目标版本以 `tag` 输入为准，workflow 会显式切换到该 tag 再执行构建与发布
 
 ### 2.5 回滚 / 撤回发布（建议流程）
 
