@@ -87,17 +87,18 @@ git push origin v1.0.0
 推送 `v1.0.0` 后，`.github/workflows/release.yml` 会自动执行：
 
 1. checkout 指定 tag
-2. `uv sync --frozen`
+2. 安装构建工具（`build` / `twine`）
 3. 校验 tag 格式为 `vX.Y.Z`
 4. 校验 tag 与 `pyproject.toml` 版本一致
 5. 构建 wheel 与 sdist
-6. 在干净环境安装 wheel 并执行冒烟测试
-7. 创建 GitHub Release 并上传 `dist/*`
-8. 自动尝试发布到 PyPI
+6. 执行 `twine check dist/*`
+7. 在干净环境安装 wheel 并执行冒烟测试
+8. 创建 GitHub Release 并上传 `dist/*`
+9. 通过 Trusted Publishing 自动发布到 PyPI
 
 ## 5. PyPI 发布触发规则
 
-当前 workflow 支持两种方式发布到 PyPI。
+当前 workflow 使用与 `third_party/pyxianyu` 对齐的 Trusted Publishing。
 
 ### 5.1 方式 A：tag 自动发布
 
@@ -111,20 +112,9 @@ git push origin v1.0.0
 在 GitHub Actions 页面手动运行 Release workflow，并设置：
 
 - `tag = v1.0.0`
-- `publish_pypi = true`
-- `pypi_via_token = false`
 
 此模式仍然依赖 PyPI Trusted Publishing。
 页面里选择的 branch 仅用于加载 workflow 文件，真正发布的目标版本以 `tag` 输入为准。
-
-### 5.3 方式 C：手动触发 + API Token
-
-仅在 Trusted Publishing 暂不可用时作为备选方案：
-
-- GitHub Secret：`PYPI_API_TOKEN`
-- 手动运行 Release workflow
-- 设置 `publish_pypi = true`
-- 设置 `pypi_via_token = true`
 
 ## 6. 发布结果验证
 

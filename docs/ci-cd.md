@@ -45,33 +45,22 @@ workflow 会构建并把 `dist/*` 作为 GitHub Release 附件上传。
 
 ### 2.4 PyPI 发布
 
-本仓库提供两种发布方式：
-
-#### 方式 A：Trusted Publishing（推荐）
+本仓库使用与 `third_party/pyxianyu` 对齐的 **Trusted Publishing** 路径。
 
 - 依赖 OIDC，无需长期保存 PyPI Token
 - 需要在 PyPI 项目配置中允许该 GitHub 仓库发布（PyPI 侧配置一次即可）
+- 发布 workflow 使用标准 Python 打包链路（`python -m build` / `twine check` / `python -m venv`），不依赖 `uv sync --frozen`
 
 默认行为：
 
 - 推送符合规范的 `v*` tag 时，workflow 会自动尝试通过 Trusted Publishing 发布到 PyPI
-- `workflow_dispatch` 保留为补发 / 重试入口；如需手动补发，可勾选 `publish_pypi=true` 且 `pypi_via_token=false`
-
-#### 方式 B：API Token（备选）
-
-需要配置 GitHub Secrets：
-
-- `PYPI_API_TOKEN`
-
-启用方式：
-
-- 手动触发 workflow 时勾选 `publish_pypi=true` 且 `pypi_via_token=true`
+- `workflow_dispatch` 保留为补发 / 重试入口；手动触发时填写已有 tag 即可
 
 说明：
 
 - 主路径是 `push v* tag` 自动发布，策略与 `third_party/pyxianyu` 对齐
-- `PUBLISH_PYPI_ON_TAG` 已不再作为发布条件，避免出现“GitHub Release 成功但 PyPI 步骤被跳过”的歧义状态
 - 手动触发 `workflow_dispatch` 时，页面里选择的 branch 仅用于加载 workflow 文件；真正发布的目标版本以 `tag` 输入为准，workflow 会显式切换到该 tag 再执行构建与发布
+- 当前发布流程已移除 `PYPI_API_TOKEN` 兜底分支，避免额外的条件分支和配置漂移
 
 ### 2.5 回滚 / 撤回发布（建议流程）
 
