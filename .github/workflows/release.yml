@@ -114,29 +114,8 @@ jobs:
         env:
           TAG: ${{ steps.resolve.outputs.tag }}
         run: |
-          python -m venv /tmp/smoke-venv
-          /tmp/smoke-venv/bin/python -m ensurepip --upgrade
-          /tmp/smoke-venv/bin/python -m pip install --upgrade pip
-          /tmp/smoke-venv/bin/python -m pip install dist/*.whl
-          echo "--- import smoke ---"
-          /tmp/smoke-venv/bin/python -c "
-            import xianyu_mcp
-            import os
-            from pathlib import Path
-            expected = os.environ['TAG'].lstrip('v')
-            assert xianyu_mcp.__version__ == expected, f'version mismatch: {xianyu_mcp.__version__} vs {expected}'
-            from xianyu_mcp.tools.xianyu_api_tools import _load_xianyu_modules
-            _load_xianyu_modules()
-            entrypoint = Path('/tmp/smoke-venv/bin/xianyu-mcp-server')
-            assert entrypoint.exists(), f'entrypoint missing: {entrypoint}'
-            print('import ok, version:', xianyu_mcp.__version__)
-          "
-          echo "--- entrypoint smoke (xianyu-mcp-server) ---"
-          /tmp/smoke-venv/bin/xianyu-mcp-server --help > /dev/null || {
-            echo "WARNING: entrypoint xianyu-mcp-server --help failed (may require stdio); trying module call"
-            /tmp/smoke-venv/bin/python -m xianyu_mcp.server --help > /dev/null
-          }
-          echo "wheel install smoke: OK"
+          WHEEL="$(ls dist/*.whl)"
+          python scripts/release_smoke_check.py --wheel "$WHEEL" --version "${TAG#v}"
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
